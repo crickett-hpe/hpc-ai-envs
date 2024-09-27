@@ -1,0 +1,27 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# NGC images contain user owned files in /usr/lib
+RUN chown root:root /usr/lib
+
+# Copy shell scripts as needed so that a simple change to one of those
+# scripts does not cause this image and all derived images from being
+# completely rebuilt. This can save significant build time, especially for
+# the HPC images.
+ARG SCRIPT_DIR=/tmp/dockerfile_scripts
+RUN mkdir -p ${SCRIPT_DIR}
+
+COPY dockerfile_scripts/install_deb_packages.sh ${SCRIPT_DIR}
+RUN ${SCRIPT_DIR}/install_deb_packages.sh
+
+COPY dockerfile_scripts/additional-requirements-torch.txt ${SCRIPT_DIR}
+COPY dockerfile_scripts/additional-requirements.txt ${SCRIPT_DIR}
+RUN python -m pip install  \
+    -r ${SCRIPT_DIR}/additional-requirements-torch.txt \
+    -r ${SCRIPT_DIR}/additional-requirements.txt
+
+ENV DEEPSPEED_PIP="deepspeed==0.13.0"
+COPY dockerfile_scripts/install_deepspeed.sh ${SCRIPT_DIR}
+RUN ${SCRIPT_DIR}/install_deepspeed.sh
+
+RUN rm -r /tmp/*

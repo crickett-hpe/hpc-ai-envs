@@ -1,0 +1,16 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# NGC images contain user owned files in /usr/lib
+RUN chown root:root /usr/lib
+
+# Copy various shell scripts that group dependencies for install
+COPY dockerfile_scripts /tmp/dockerfile_scripts
+
+RUN /tmp/det_dockerfile_scripts/install_deb_packages.sh
+
+RUN python -m pip install  \
+    -r /tmp/dockerfile_scripts/additional-requirements-tf.txt \
+    -r /tmp/dockerfile_scripts/additional-requirements.txt
+
+RUN rm -r /tmp/*

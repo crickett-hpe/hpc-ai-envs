@@ -1,0 +1,18 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# Copy the given directory containing the SlingShot/CXI libraries into
+# the container at /container/ss11-libs and add that to the LD_LIBRARY_PATH.
+# This allows users to pull in the host libs now rather than at container rt.
+ARG HPC_LIBS_DIR
+COPY ${HPC_LIBS_DIR} /tmp/${HPC_LIBS_DIR}
+RUN mkdir -p /container/ss11-libs && \
+    cp -r /tmp/${HPC_LIBS_DIR}/* /container/ss11-libs && \
+    chmod -R go+rX /container/ss11-libs && \
+    rm -rf /tmp/${HPC_LIBS_DIR} && \
+    ln -s /usr/lib/aarch64-linux-gnu/libjson-c.so.5 \
+       /usr/lib/aarch64-linux-gnu/libjson-c.so.3
+
+ENV LD_LIBRARY_PATH=/container/ss11-libs:$LD_LIBRARY_PATH
+
+RUN rm -rf /tmp/*
