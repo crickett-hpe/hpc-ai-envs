@@ -1,17 +1,132 @@
 # HPC AI Environments
 
-TODO
+The following describes how to build Docker containers for PyTorch/TF
+that target Cray EX HPC systems with NVIDIA or AMD GPUs and the
+SlingShot (SS) interconnect and enable optimal use of the SS network
+for NCCL/RCCL/MPI. The NCCL/RCCL support leverage the AWS OFI NCCL
+plugin. It is intended that the Docker containers built using this
+repository are converted to a Singularity/Apptainer container and
+executed via a work load manager (WLM) such as Slurm on the HPC
+system.
+
+The images created by this repository use either the NGC or AMD InfinityHub
+images as their base and then add the required bits for enabling SS support.
+The SS support means installing a new version of OMPI/MPICH that can use
+libfabric, Horovod targeting the given OMPI/MPICH, and the AWS OFI NCCL
+plugin to enable NCCL/RCCL over libfabric.
+
+Optionally, the build command can be given a pointer to a local
+directory that contains copies of the Cray lib{fabric*|cxi*} required to
+optimally use the Cray SS network. These libraries can be built into
+the docker image to make it easier for users to run their applications
+that leverage the SS network. Note that this is optional. If the user
+does not specify this directory for the build step then the proper
+directories containing the Cray lib{fabric*|cxi*} can be provided at
+container runtime. In this case, the libraries will be bind-mounted
+into the container at runtime at a known location and the entrypoint
+script included in the container will update the LD_LIBRARY_PATH to
+utilize these libraries and enable optimal SS performance. Examples of how
+to specify the Cray lib{fabric*|cxi*} at runtime are provided below.
 
 ## Prerequisites
 
-TODO
+* Docker or podman
+    - Used to build the docker images
+* Singularity/Apptainer
+    - Used to convert the docker image to a Singularity/Apptainer sif and
+      run the application
 
 ## Building Images
 
-TODO
+The build process expects to find `docker` in the default `PATH`. If
+`docker` is not installed on the system, it is also sufficient to have
+`podman` installed and simply make a symbolic link to `podman` that is
+named `docker`. For example:
+
+```
+$> ln -s `which podman` $HOME/bin/docker
+```
+
+After cloning this repository and ensuring `docker` exists in the
+default `PATH`, an image can be built by running `make` on for the
+desired target. For example, to build the latest PyTorch image using
+the NGC base image, a command similar to the following could be used:
+
+```
+$> make build-pytorch-ngc WITH_MPI=1 WITH_OFI=1 >& build-pytorch-ngc.txt
+```
+
+If successful you should see the resulting docker image:
+
+```
+$> docker images | grep pytorch-ngc
+localhost/cray/pytorch-ngc-hpc-dev-ss          abcdef                          996b8956e173  4 days ago    18.3 GB
+localhost/cray/pytorch-ngc-hpc-dev             abcdef                          a6c97a92ebd4  4 days ago    18.3 GB
+```
+
+Note that if you want to provide the name of a directory containing the
+Cray lib{fabric|cxi} to the build you can do that with a command similar to:
+
+```
+$> make build-pytorch-ngc WITH_MPI=1 WITH_OFI=1 HPC_LIBS_DIR="ss11-libs" >& build-pytorch-ngc-ss.txt
+```
+
+Inside the `ss11-libs` directory you would have the required Cray libraries,
+such as:
+
+```
+$> ls ss11-libs
+libcxi.la  libcxi.so.1      libcxiutils.la  libcxiutils.so.0      libfabric.a   libfabric.so.1
+libcxi.so  libcxi.so.1.5.0  libcxiutils.so  libcxiutils.so.0.0.0  libfabric.so  libfabric.so.1.18.2
+```
+
+If successful, that will result in a Docker image ending with the
+`-ss` to signify that the SS libraries were built into the
+container. For example, in the Docker images listed above the image
+`cray/pytorch-ngc-hpc-dev-ss:abcdef` will have the SS images copied into it
+so that the user does not need to specify the locations at container
+runtime. See the `Dockerfile-ss` for more information on how this works.
 
 
 ## Examples
+
+The following examples illustrate how to run various AI benchmarks
+using the PyTorch/TF containers on a SS system. These tests show how
+to bind-mount in the necessary Cray lib{fabric|cxi} at container runtime to
+the expected mount points for the container entrypoint script. This is
+done in the steps by the bind mounts:
+
+```
+--bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr
+```
+
+The first mount:
+
+```
+/opt/cray/libfabric/1.15.2.0/lib64:/host/lib
+```
+
+will bind-mount in the directory containing the Cray libfabric* `lib64`
+directory to the `/host/lib` directory expected by the container
+entrypoint script. Note that the source directory may vary on the host
+system but the `/host/lib` is the expected destination.
+
+The second mount:
+
+```
+/usr:/host/usr
+```
+
+Is necessary for the Cray libcxi* as well as other libraries that the
+libcxi* may be dependent upon (e.g., libjson-c.so.3).
+
+Note: if the container is built with the `HPC_LIBS_DIR` option and a
+directory containing the Cray lib{fabric*|cxi*} is provided then these
+bind mounts should not be necessary.
+
+TODO: Provide versions of these examples that do not include the Cray
+bind-mounts but instead use the `-ss` version of the image.
+
 ### NCCL Tests
 
 #### Source
