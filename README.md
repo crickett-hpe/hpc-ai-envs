@@ -145,7 +145,8 @@ Singularity> make MPI=1 MPI_HOME=/container/ompi
 Singularity> exit
 ```
 
-An example command for running the all_reduce test:
+An example command for running the all_reduce test on two nodes using
+four GPUs per node:
 
 ```
 $> cd nccl-tests
@@ -193,14 +194,17 @@ wget https://raw.githubusercontent.com/pytorch/pytorch/main/benchmarks/distribut
 ```
 
 #### Steps
+
+An example command for running the benchmark on two nodes with four GPUs
+per node:
+
 ```
 $> env MASTER_ADDR=`scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` srun --mpi=pmi2 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` --bind /projects/benchmarking/public --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev-hvd.sif /projects/benchmarking/public/examples/wrapper.sh python /projects/benchmarking/public/examples/ddp/benchmark.py >& benchmark-out-n8-ppn4.txt
 ```
 
 #### Example Output
 
-The following is example output from running the Torch distributed Resnet benchmark on two nodes with
-four ranks per node:
+The following is example output from running the Torch distributed Resnet benchmark on two nodes with four ranks per node:
 
 ```
 -----------------------------------
@@ -266,6 +270,11 @@ $> git clone https://github.com/horovod/horovod.git
 
 #### Steps
 
+The following is an exmaple command for running the PyTorch Horovod benchmark
+on two nodes with four GPUs per node. Note that the TF benchmark would be
+nearly identical and should just require changing the name of the image to
+that of the TF container and updating the path to the TF2 benchmark.
+
 ```
 $> cd horovod
 $> srun --mpi=pmi2 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev-hvd.sif /projects/benchmarking/public/examples/wrapper.sh python ./examples/pytorch/pytorch_synthetic_benchmark.py --batch-size=96 --fp16-allreduce >& pt-syn-n8-ppn4.txt
@@ -306,14 +315,16 @@ git clone https://github.com/huggingface/transformers.git
 
 #### Steps
 
-The cloned version of `run_clm.py` needs to have a few modifications before it can run to remove references to
-packages not installed in the container, etc. Other changes are also done to enable using FlashAttention2 following
-instructions from:
+The cloned version of `run_clm.py` needs to have a few modifications
+before it can run to remove references to packages not installed in
+the container, etc. Other changes are also done to enable using
+FlashAttention2 following instructions from:
 
 https://huggingface.co/docs/transformers/perf_infer_gpu_one
 
-The following diff command can be used to see all of the changes made to the original version to create the modified
-version used in this example.
+The following diff command can be used to see all of the changes made
+to the original version to create the modified version used in this
+example.
 
 ```
 $> cd /projects/benchmarking/public/examples/llama-2/transformers/examples/pytorch/language-modeling
@@ -347,8 +358,11 @@ index 794bb5f1c..82118f64b 100755
 <...snip...>
 ```
 
-A command similar to the following can be used to run the modified `run_clm.py`. Note that you must provide your own
-HuggingFace token to enable pulling the model, etc, in the command below in place of `--token=<YOUR_HF_TOKEN_HERE>`. 
+A command similar to the following can be used to run the modified
+`run_clm.py`. Note that you must provide your own HuggingFace token to
+enable pulling the model, etc, in the command below in place of
+`--token=<YOUR_HF_TOKEN_HERE>`. The example below runs on two nodes and
+uses four GPUs per node.
 
 ```
 $> env MASTER_ADDR=`scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` srun --mpi=pmi2 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev-hvd.sif /projects/benchmarking/public/examples/llama-2/ds-wrapper.sh python /projects/benchmarking/public/examples/llama-2/transformers/examples/pytorch/language-modeling/run_clm.py --model_name_or_path meta-llama/Llama-2-7b-hf --dataset_name wikitext --dataset_config_name wikitext-2-v1 --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --do_train --do_eval --output_dir `pwd`/output --overwrite_output_dir --token=<YOUR_HF_TOKEN_HERE> --block_size 4096 --torch_dtype=bfloat16 --bf16=True --deepspeed=/projects/benchmarking/public/examples/llama-2/ds_config.json --gradient_checkpointing=True >& out-n8-ppn4.txt
@@ -406,22 +420,26 @@ N4xppn4: 262.6 TFLOP/s per GPU
 N8xppn4: 261.5 TFLOP/s per GPU
 ```
 
-The runs on a single node had memory pressure causing more torch memory flushes which impacted performance.
+The runs on a single node had memory pressure causing more torch
+memory flushes which impacted performance.
 
 
 ### Notes
 
-A common requirement for each of these tests that use these Singularity containers is that the Cray libfabric/cxi
-need to be made available to the container when running. This is done by the following bind mount option to the
-singularity run commands:
+A common requirement for each of these tests that use these
+Singularity containers is that the Cray libfabric/cxi need to be made
+available to the container when running. This is done by the following
+bind mount option to the singularity run commands:
 
 ```
 --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr
 ```
 
-The destination mount points of `/host/lib` and `/host/usr` are important because these are the locations where the
-container entrypoint script will look for the Cray libfabric/cxi in order to automatically swap them in place of
-the open-source libfabric built into the container. This is what is needed to enable SS11 to be utilized by NCCL
-inside of the container.
+The destination mount points of `/host/lib` and `/host/usr` are
+important because these are the locations where the container
+entrypoint script will look for the Cray libfabric/cxi in order to
+automatically swap them in place of the open-source libfabric built
+into the container. This is what is needed to enable SS11 to be
+utilized by NCCL inside of the container.
 
 
