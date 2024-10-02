@@ -443,3 +443,9 @@ into the container. This is what is needed to enable SS11 to be
 utilized by NCCL inside of the container.
 
 
+This repository is based off the following branch of the Determined-AI
+task environments repository:
+
+https://github.com/determined-ai/environments/tree/cleanup-hpc-build
+
+
