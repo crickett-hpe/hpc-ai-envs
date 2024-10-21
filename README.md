@@ -440,7 +440,7 @@ as part of the final build step (ie, Dockerfile-ss) so the command does
 not bind-mount in the Cray libfabric/cxi at container runtime.
 
 ```
-$> https://mvapich.cse.ohio-state.edu/download/mvapich/osu-micro-benchmarks-7.4.tar.gz
+$> wget https://mvapich.cse.ohio-state.edu/download/mvapich/osu-micro-benchmarks-7.4.tar.gz
 $> tar zxf osu-micro-benchmarks-7.4.tar.gz
 $> cd osu-micro-benchmarks-7.4/
 $> singularity shell --nv --bind $TMPDIR --bind `pwd` /projects/benchmarking/public/sif/cray-pytorch-ngc-hpc-dev.sif
