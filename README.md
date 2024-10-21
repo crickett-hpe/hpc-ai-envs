@@ -87,6 +87,13 @@ container. For example, in the Docker images listed above the image
 so that the user does not need to specify the locations at container
 runtime. See the `Dockerfile-ss` for more information on how this works.
 
+Once the Docker image is built you can convert it to a Singularity/Apptainer
+image using commands similar to the following:
+
+```
+$> docker save -o cray-pytorch-ngc-hpc-dev.tar localhost/cray/pytorch-ngc-hpc-dev:31918f9
+$> singularity build cray-pytorch-ngc-hpc-dev.sif docker-archive:/path/to/docker/tarball/cray-pytorch-ngc-hpc-dev.tar
+```
 
 ## Examples
 
