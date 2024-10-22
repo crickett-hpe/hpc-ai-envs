@@ -329,13 +329,11 @@ FlashAttention2 following instructions from:
 
 https://huggingface.co/docs/transformers/perf_infer_gpu_one
 
-The following diff command can be used to see all of the changes made
+The following diff command shows the changes made
 to the original version to create the modified version used in this
 example.
 
 ```
-$> cd /projects/benchmarking/public/examples/llama-2/transformers/examples/pytorch/language-modeling
-$> git diff | less
 diff --git a/examples/pytorch/language-modeling/run_clm.py b/examples/pytorch/language-modeling/run_clm.py
 index 794bb5f1c..82118f64b 100755
 --- a/examples/pytorch/language-modeling/run_clm.py
@@ -362,7 +360,90 @@ index 794bb5f1c..82118f64b 100755
  
  require_version("datasets>=2.14.0", "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt")
  
-<...snip...>
+@@ -149,6 +150,12 @@ class ModelArguments:
+             )
+         },
+     )
++    use_flash_attention_2: bool = field(
++        default=True
++    )
++    device_map: Optional[str] = field(
++        default='auto'
++    )
+ 
+     def __post_init__(self):
+         if self.config_overrides is not None and (self.config_name is not None or self.model_name_or_path is not None):
+@@ -312,7 +319,7 @@ def main():
+             cache_dir=model_args.cache_dir,
+             token=model_args.token,
+             streaming=data_args.streaming,
+-            trust_remote_code=model_args.trust_remote_code,
++#            trust_remote_code=model_args.trust_remote_code,
+         )
+         if "validation" not in raw_datasets.keys():
+             raw_datasets["validation"] = load_dataset(
+@@ -434,6 +441,7 @@ def main():
+             trust_remote_code=model_args.trust_remote_code,
+             torch_dtype=torch_dtype,
+             low_cpu_mem_usage=model_args.low_cpu_mem_usage,
++            use_flash_attention_2=True,
+         )
+     else:
+         model = AutoModelForCausalLM.from_config(config, trust_remote_code=model_args.trust_remote_code)
+@@ -458,14 +466,15 @@ def main():
+     tok_logger = transformers.utils.logging.get_logger("transformers.tokenization_utils_base")
+ 
+     def tokenize_function(examples):
+-        with CaptureLogger(tok_logger) as cl:
+-            output = tokenizer(examples[text_column_name])
+-        # clm input could be much much longer than block_size
+-        if "Token indices sequence length is longer than the" in cl.out:
+-            tok_logger.warning(
+-                "^^^^^^^^^^^^^^^^ Please ignore the warning above - this long input will be chunked into smaller bits"
+-                " before being passed to the model."
+-            )
++        # with CaptureLogger(tok_logger) as cl:
++        #     output = tokenizer(examples[text_column_name])
++        # # clm input could be much much longer than block_size
++        # if "Token indices sequence length is longer than the" in cl.out:
++        #     tok_logger.warning(
++        #         "^^^^^^^^^^^^^^^^ Please ignore the warning above - this long input will be chunked into smaller bits"
++        #         " before being passed to the model."
++        #     )
++        output = tokenizer(examples[text_column_name])
+         return output
+ 
+     with training_args.main_process_first(desc="dataset map tokenization"):
+@@ -589,10 +598,14 @@ def main():
+         tokenizer=tokenizer,
+         # Data collator will default to DataCollatorWithPadding, so we change it.
+         data_collator=default_data_collator,
+-        compute_metrics=compute_metrics if training_args.do_eval and not is_torch_xla_available() else None,
++        compute_metrics=compute_metrics if training_args.do_eval and not is_torch_tpu_available() else None,
+         preprocess_logits_for_metrics=preprocess_logits_for_metrics
+-        if training_args.do_eval and not is_torch_xla_available()
++        if training_args.do_eval and not is_torch_tpu_available()
+         else None,
++        # compute_metrics=compute_metrics if training_args.do_eval and not is_torch_xla_available() else None,
++        # preprocess_logits_for_metrics=preprocess_logits_for_metrics
++        # if training_args.do_eval and not is_torch_xla_available()
++        # else None,
+     )
+ 
+     # Training
+@@ -648,9 +661,9 @@ def main():
+         trainer.create_model_card(**kwargs)
+ 
+ 
+-def _mp_fn(index):
+-    # For xla_spawn (TPUs)
+-    main()
++# def _mp_fn(index):
++#     # For xla_spawn (TPUs)
++#     main()
+ 
+ 
+ if __name__ == "__main__":
 ```
 
 A command similar to the following can be used to run the modified
