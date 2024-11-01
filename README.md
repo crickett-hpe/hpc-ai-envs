@@ -60,8 +60,9 @@ If successful you should see the resulting docker image:
 
 ```
 $> docker images | grep pytorch-ngc
-localhost/cray/pytorch-ngc-hpc-dev-ss          abcdef                          996b8956e173  4 days ago    18.3 GB
-localhost/cray/pytorch-ngc-hpc-dev             abcdef                          a6c97a92ebd4  4 days ago    18.3 GB
+localhost/cray/pytorch-ngc-hpc-dev-ss  053a634     47a5b67250f3  28 minutes ago     18.4 GB
+localhost/cray/pytorch-ngc-hpc-dev     053a634     cef59f3db8a5  34 minutes ago     18.3 GB
+localhost/cray/pytorch-ngc-dev         053a634     3d66151473fc  About an hour ago  18.2 GB
 ```
 
 By default, the build will include MPI and OFI for targeting the Cray
@@ -88,7 +89,7 @@ and provide the name of that directory to the build you can do that
 with a command similar to:
 
 ```
-$> make build-pytorch-ngc WITH_MPI=1 WITH_OFI=1 HPC_LIBS_DIR="ss11-libs" >& build-pytorch-ngc-ss.txt
+$> make build-pytorch-ngc HPC_LIBS_DIR="ss11-libs" >& build-pytorch-ngc-ss.txt
 ```
 
 Inside the `ss11-libs` directory you would have the required Cray libraries,
@@ -112,8 +113,8 @@ Once the Docker image is built you can convert it to a Singularity/Apptainer
 image using commands similar to the following:
 
 ```
-$> docker save -o cray-pytorch-ngc-hpc-dev.tar localhost/cray/pytorch-ngc-hpc-dev:31918f9
-$> singularity build cray-pytorch-ngc-hpc-dev.sif docker-archive:/path/to/docker/tarball/cray-pytorch-ngc-hpc-dev.tar
+$> docker save -o pytorch-ngc-hpc-dev-ss-053a634.tar cray/pytorch-ngc-hpc-dev-ss:053a634
+$> singularity build pytorch-ngc-hpc-dev-ss-053a634.sif docker-archive:/path/to/docker/tarball/pytorch-ngc-hpc-dev-ss-053a634.tar
 ```
 
 ## Examples
