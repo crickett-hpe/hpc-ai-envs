@@ -73,7 +73,7 @@ ifeq "$(WITH_SS11)" "1"
               LIBFAB_DIR=$(shell dirname $(LIBFAB_SO))
               LIBCXI_DIR=$(shell dirname $(LIBCXI_SO))
               # Copy the libfabric/cxi to a tmp dir for the HPC_LIBS_DIR
-              TMP_FILE:=$(shell mktemp -d -t ss11-libs)
+              TMP_FILE:=$(shell mktemp -d -t ss11-libs.XXXXXX)
               TMP_FILE_BASE=$(shell basename $(TMP_FILE))
               # Make a tmp dir in the cwd using the tmp_file name.
               # We do this to distinguish if we made the dir vs the user
