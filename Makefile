@@ -1,8 +1,7 @@
 SHELL := /bin/bash -o pipefail
 VERSION := $(shell cat VERSION)
 VERSION_DASHES := $(subst .,-,$(VERSION))
-#SHORT_GIT_HASH := $(shell git rev-parse --short HEAD)
-SHORT_GIT_HASH := abcdef
+SHORT_GIT_HASH := $(shell git rev-parse --short HEAD)
 
 export DOCKERHUB_REGISTRY := cray
 export REGISTRY_REPO := hpc-ai-envs
@@ -17,6 +16,17 @@ CUDA_SUFFIX := -cuda
 PLATFORM_LINUX_ARM_64 := linux/arm64
 PLATFORM_LINUX_AMD_64 := linux/amd64
 HOROVOD_GPU_OPERATIONS := NCCL
+
+# Default to enabling MPI, OFI and SS11. Note that if we cannot
+# find the SS11 libs automatically and the user did not provide
+# a location we will not end up building the -ss version of the image.
+# This just means the user would need to bind-mount the SS11 libs
+# at runtime.
+WITH_MPI ?= 1
+WITH_OFI ?= 1
+WITH_SS11 ?= 1
+CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
+CRAY_LIBCXI_DIR ?= "/usr"
 
 ifeq "$(WITH_MPI)" "1"
 	HPC_SUFFIX := -hpc
@@ -54,6 +64,31 @@ else
 	MPI_BUILD_ARG := USE_GLOO=1
 endif
 
+ifeq "$(WITH_SS11)" "1"
+	ifeq ($(HPC_LIBS_DIR),)
+           LIBFAB_SO=$(shell find $(CRAY_LIBFABRIC_DIR) -name libfabric\*so)
+           LIBCXI_SO=$(shell find $(CRAY_LIBCXI_DIR) -name libcxi\*so)
+           # Make sure we found the libs
+           ifneq ($(and $(LIBFAB_SO),$(LIBCXI_SO)),)
+              LIBFAB_DIR=$(shell dirname $(LIBFAB_SO))
+              LIBCXI_DIR=$(shell dirname $(LIBCXI_SO))
+              # Copy the libfabric/cxi to a tmp dir for the HPC_LIBS_DIR
+              TMP_FILE:=$(shell mktemp -d -t ss11-libs)
+              TMP_FILE_BASE=$(shell basename $(TMP_FILE))
+              # Make a tmp dir in the cwd using the tmp_file name.
+              # We do this to distinguish if we made the dir vs the user
+              # putting it there so we know to clean it up after the build.
+              $(shell mkdir $(TMP_FILE_BASE))
+              HPC_LIBS_DIR=$(TMP_FILE_BASE)
+              cp_out:=$(shell cp $(LIBFAB_DIR)/libfabric* $(HPC_LIBS_DIR))
+              cp_out:=$(shell cp $(LIBCXI_DIR)/libcxi* $(HPC_LIBS_DIR))
+              # Signal that the libs were copied so we clean them up after.
+              HPC_TMP_LIBS_DIR := 1
+           endif
+        endif
+endif
+
+
 NGC_PYTORCH_PREFIX := nvcr.io/nvidia/pytorch
 NGC_TENSORFLOW_PREFIX := nvcr.io/nvidia/tensorflow
 NGC_PYTORCH_VERSION := 24.03-py3
@@ -86,7 +121,10 @@ ifneq ($(HPC_LIBS_DIR),)
 		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH) \
 		.
-endif	
+ifneq ($(HPC_TMP_LIBS_DIR),)
+	rm -rf $(HPC_LIBS_DIR)
+endif
+endif
 
 .PHONY: build-tensorflow-ngc
 build-tensorflow-ngc:

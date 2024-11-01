@@ -5,12 +5,13 @@ FROM ${BASE_IMAGE}
 # the container at /container/ss11-libs and add that to the LD_LIBRARY_PATH.
 # This allows users to pull in the host libs now rather than at container rt.
 ARG HPC_LIBS_DIR
-COPY ${HPC_LIBS_DIR} /tmp/${HPC_LIBS_DIR}
+COPY ${HPC_LIBS_DIR} /tmp/ss11-libs
+RUN ls /tmp
 RUN ARCH_TYPE=`uname -m` && \
     mkdir -p /container/ss11-libs && \
-    cp -r /tmp/${HPC_LIBS_DIR}/* /container/ss11-libs && \
+    cp -r /tmp/ss11-libs/* /container/ss11-libs && \
     chmod -R go+rX /container/ss11-libs && \
-    rm -rf /tmp/${HPC_LIBS_DIR} && \
+    rm -rf /tmp/ss11-libs && \
     ln -s /usr/lib/${ARCH_TYPE}-linux-gnu/libjson-c.so.5 \
        /usr/lib/${ARCH_TYPE}-linux-gnu/libjson-c.so.3
 

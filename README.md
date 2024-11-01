@@ -53,7 +53,7 @@ desired target. For example, to build the latest PyTorch image using
 the NGC base image, a command similar to the following could be used:
 
 ```
-$> make build-pytorch-ngc WITH_MPI=1 WITH_OFI=1 >& build-pytorch-ngc.txt
+$> make build-pytorch-ngc >& build-pytorch-ngc.txt
 ```
 
 If successful you should see the resulting docker image:
@@ -64,8 +64,28 @@ localhost/cray/pytorch-ngc-hpc-dev-ss          abcdef                          9
 localhost/cray/pytorch-ngc-hpc-dev             abcdef                          a6c97a92ebd4  4 days ago    18.3 GB
 ```
 
-Note that if you want to provide the name of a directory containing the
-Cray lib{fabric|cxi} to the build you can do that with a command similar to:
+By default, the build will include MPI and OFI for targeting the Cray
+HPC system. This can be disabled by specifying WITH_MPI=0 and
+WITH_OFI=0 to `make`. Also, the build will search for the Cray
+libfabric/cxi libraries and, if they are found, will include them into
+the built container and modify the LD_LIBRARY_PATH to point to
+them. This is done so that users on a Cray EX can easily build and run
+containers using the SS network optimally without having to add
+bind-mounts, etc, to their container run commands.
+
+If the Cray libfabric/cxi libraries are not installed in an expected location,
+or if you want to use a specific version, you can pass the locations to
+`make` using the variables `CRAY_LIBFABRIC_DIR` and `CRAY_LIBCXI_DIR`.
+For example, you could specify the locations to the build with a command
+similar to:
+
+```
+$> make build-pytorch-ngc CRAY_LIBFABRIC_DIR=/lus/scratch/username/ss11-libs/libfabric-1.18.2 CRAY_LIBCXI_DIR=/lus/scratch/username/ss11-libs/libcxi-1.5
+```
+
+Note that if you want to copy the Cray libraries to a single directory
+and provide the name of that directory to the build you can do that
+with a command similar to:
 
 ```
 $> make build-pytorch-ngc WITH_MPI=1 WITH_OFI=1 HPC_LIBS_DIR="ss11-libs" >& build-pytorch-ngc-ss.txt
@@ -80,12 +100,13 @@ libcxi.la  libcxi.so.1      libcxiutils.la  libcxiutils.so.0      libfabric.a   
 libcxi.so  libcxi.so.1.5.0  libcxiutils.so  libcxiutils.so.0.0.0  libfabric.so  libfabric.so.1.18.2
 ```
 
-If successful, that will result in a Docker image ending with the
+If successful, that build will result in a Docker image ending with the
 `-ss` to signify that the SS libraries were built into the
 container. For example, in the Docker images listed above the image
-`cray/pytorch-ngc-hpc-dev-ss:abcdef` will have the SS images copied into it
-so that the user does not need to specify the locations at container
-runtime. See the `Dockerfile-ss` for more information on how this works.
+`cray/pytorch-ngc-hpc-dev-ss:abcdef` will have the SS images copied
+into it so that the user does not need to specify the locations at
+container runtime. See the `Dockerfile-ss` for more information on how
+this works.
 
 Once the Docker image is built you can convert it to a Singularity/Apptainer
 image using commands similar to the following:
