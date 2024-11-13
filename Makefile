@@ -148,7 +148,10 @@ ifneq ($(HPC_LIBS_DIR),)
 		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO)-ss:$(SHORT_GIT_HASH) \
 		.
-endif	
+ifneq ($(HPC_TMP_LIBS_DIR),)
+	rm -rf $(HPC_LIBS_DIR)
+endif
+endif
 
 ifeq ($(WITH_MPICH),1)
 ROCM57_TORCH13_MPI :=pytorch-1.3-tf-2.10-rocm-mpich
