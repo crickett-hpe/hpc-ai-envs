@@ -102,14 +102,22 @@ NGC_TF_HPC_REPO := tensorflow-ngc-hpc-dev
 # build pytorch sif
 TMP_SIF := $(shell mktemp -d -t sif-reg.XXXXXX)
 TMP_SIF_BASE := "$(PWD)/$(shell basename $(TMP_SIF))"
+
+# Use the user's SINGULARITY_TMPDIR environment variable if it is set
+SINGULARITY_TMPDIR ?= $(TMP_SIF_BASE)
+
+# Use the user's SINGULARITY_CACHEDIR environment variable if it is set
+SINGULARITY_CACHEDIR ?= $(TMP_SIF_BASE)
+
 .PHONY: build-sif
 build-sif:
 	# Make a tmp dir in the cwd using the tmp_file name.
 	mkdir $(TMP_SIF_BASE)
-	env SINGULARITY_TMPDIR=$(TMP_SIF_BASE) SINGULARITY_CACHEDIR=$(TMP_SIF_BASE) \
+	docker save -o "$(TARGET_NAME).tar" $(DOCKERHUB_REGISTRY)/$(TARGET_TAG)
+	env SINGULARITY_TMPDIR=$(SINGULARITY_TMPDIR) SINGULARITY_CACHEDIR=$(SINGULARITY_CACHEDIR) \
             SINGULARITY_NOHTTPS=true NAMESPACE="" \
             singularity -vvv build $(TARGET_NAME).sif \
-                             docker-daemon://$(DOCKERHUB_REGISTRY)/$(TARGET_NAME)
+                             "docker-archive://$(TARGET_NAME).tar"
 	rm -rf $(TMP_SIF_BASE)
 
 # build hpc together since hpc is dependent on the normal build
@@ -140,12 +148,12 @@ ifneq ($(HPC_LIBS_DIR),)
         endif
         ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)" TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
         endif
 else
         ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_NAME="$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)" TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
         endif
 endif
 
