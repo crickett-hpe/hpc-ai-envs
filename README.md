@@ -36,6 +36,21 @@ to specify the Cray lib{fabric*|cxi*} at runtime are provided below.
     - Used to convert the docker image to a Singularity/Apptainer sif and
       run the application
 
+If Singularity/Apptainer are not available on the system, it can be
+installed by a normal user using the following:
+
+```
+$> curl -s https://raw.githubusercontent.com/apptainer/apptainer/main/tools/install-unprivileged.sh |  bash -s - install-dir
+```
+
+After `apptainer` is installed it can be executed by adding
+`install-dir/bin` to the `PATH`. For more information see the
+following `apptainer` documentation where it discusses doing an
+unprivileged install:
+
+https://apptainer.org/docs/admin/main/installation.html
+
+
 ## Building Images
 
 The build process expects to find `docker` in the default `PATH`. If
