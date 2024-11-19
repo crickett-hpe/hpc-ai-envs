@@ -25,6 +25,7 @@ HOROVOD_GPU_OPERATIONS := NCCL
 WITH_MPI ?= 1
 WITH_OFI ?= 1
 WITH_SS11 ?= 1
+BUILD_SIF ?= 1
 CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
 
@@ -98,6 +99,27 @@ NGC_PYTORCH_HPC_REPO := pytorch-ngc-hpc-dev
 NGC_TF_REPO := tensorflow-ngc-dev
 NGC_TF_HPC_REPO := tensorflow-ngc-hpc-dev
 
+# build pytorch sif
+TMP_SIF := $(shell mktemp -d -t sif-reg.XXXXXX)
+TMP_SIF_BASE := "$(PWD)/$(shell basename $(TMP_SIF))"
+
+# Use the user's SINGULARITY_TMPDIR environment variable if it is set
+SINGULARITY_TMPDIR ?= $(TMP_SIF_BASE)
+
+# Use the user's SINGULARITY_CACHEDIR environment variable if it is set
+SINGULARITY_CACHEDIR ?= $(TMP_SIF_BASE)
+
+.PHONY: build-sif
+build-sif:
+	# Make a tmp dir in the cwd using the tmp_file name.
+	mkdir $(TMP_SIF_BASE)
+	docker save -o "$(TARGET_NAME).tar" $(DOCKERHUB_REGISTRY)/$(TARGET_TAG)
+	env SINGULARITY_TMPDIR=$(SINGULARITY_TMPDIR) SINGULARITY_CACHEDIR=$(SINGULARITY_CACHEDIR) \
+            SINGULARITY_NOHTTPS=true NAMESPACE="" \
+            singularity -vvv build $(TARGET_NAME).sif \
+                             "docker-archive://$(TARGET_NAME).tar"
+	rm -rf $(TMP_SIF_BASE) "$(TARGET_NAME).tar"
+
 # build hpc together since hpc is dependent on the normal build
 .PHONY: build-pytorch-ngc
 build-pytorch-ngc:
@@ -121,9 +143,18 @@ ifneq ($(HPC_LIBS_DIR),)
 		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH) \
 		.
-ifneq ($(HPC_TMP_LIBS_DIR),)
-	rm -rf $(HPC_LIBS_DIR)
-endif
+        ifneq ($(HPC_TMP_LIBS_DIR),)
+	    rm -rf $(HPC_LIBS_DIR)
+        endif
+        ifeq "$(BUILD_SIF)" "1"
+	    @echo "BUILD_SIF: $(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)" TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
+        endif
+else
+        ifeq "$(BUILD_SIF)" "1"
+	    @echo "BUILD_SIF: $(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)" TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
+        endif
 endif
 
 .PHONY: build-tensorflow-ngc
@@ -148,9 +179,18 @@ ifneq ($(HPC_LIBS_DIR),)
 		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO)-ss:$(SHORT_GIT_HASH) \
 		.
-ifneq ($(HPC_TMP_LIBS_DIR),)
-	rm -rf $(HPC_LIBS_DIR)
-endif
+	ifneq ($(HPC_TMP_LIBS_DIR),)
+		rm -rf $(HPC_LIBS_DIR)
+	endif
+        ifeq "$(BUILD_SIF)" "1"
+	    @echo "BUILD_SIF: $(NGC_TF_HPC_REPO)-ss:$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(NGC_TF_HPC_REPO)-ss:$(SHORT_GIT_HASH)" TARGET_NAME="$(NGC_TF_HPC_REPO)-$(SHORT_GIT_HASH)"
+        endif
+else
+        ifeq "$(BUILD_SIF)" "1"
+	    @echo "BUILD_SIF: $(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH)" TARGET_NAME="$(NGC_TF_HPC_REPO)-$(SHORT_GIT_HASH)"
+        endif
 endif
 
 ifeq ($(WITH_MPICH),1)
