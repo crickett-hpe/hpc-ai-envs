@@ -25,9 +25,19 @@ HOROVOD_GPU_OPERATIONS := NCCL
 WITH_MPI ?= 1
 WITH_OFI ?= 1
 WITH_SS11 ?= 1
-BUILD_SIF ?= 1
 CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
+
+# If the user doesn't explicitly pass in a value for BUILD_SIF, then
+# default it to 1 if singularity is in the PATH
+BUILD_SIF ?= $(shell singularity -h 2>/dev/null|head -1c|wc -l)
+
+# If the user specifies USE_CWD_SIF=1 on the command line, singularity
+# will use the current working directory for temp and cache space, this
+# is useful if there's not enough space in /tmp for example.
+# If not specified (or if USE_CWD_SIF=0 is set) then singularity will
+# use its default tmp and cache dir locations.
+USE_CWD_SIF ?= 0
 
 ifeq "$(WITH_MPI)" "1"
 	HPC_SUFFIX := -hpc
@@ -103,18 +113,17 @@ NGC_TF_HPC_REPO := tensorflow-ngc-hpc-dev
 TMP_SIF := $(shell mktemp -d -t sif-reg.XXXXXX)
 TMP_SIF_BASE := "$(PWD)/$(shell basename $(TMP_SIF))"
 
-# Use the user's SINGULARITY_TMPDIR environment variable if it is set
-SINGULARITY_TMPDIR ?= $(TMP_SIF_BASE)
-
-# Use the user's SINGULARITY_CACHEDIR environment variable if it is set
-SINGULARITY_CACHEDIR ?= $(TMP_SIF_BASE)
+SING_DIRS :=
+ifeq "$(USE_CWD_SIF)" "1"
+     SING_DIRS := SINGULARITY_TMPDIR=$(TMP_SIF_BASE) SINGULARITY_CACHEDIR=$(TMP_SIF_BASE)
+endif
 
 .PHONY: build-sif
 build-sif:
 	# Make a tmp dir in the cwd using the tmp_file name.
 	mkdir $(TMP_SIF_BASE)
 	docker save -o "$(TARGET_NAME).tar" $(DOCKERHUB_REGISTRY)/$(TARGET_TAG)
-	env SINGULARITY_TMPDIR=$(SINGULARITY_TMPDIR) SINGULARITY_CACHEDIR=$(SINGULARITY_CACHEDIR) \
+	env $(SING_DIRS) \
             SINGULARITY_NOHTTPS=true NAMESPACE="" \
             singularity -vvv build $(TARGET_NAME).sif \
                              "docker-archive://$(TARGET_NAME).tar"
