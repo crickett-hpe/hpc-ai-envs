@@ -34,6 +34,16 @@ apt-get update \
     libpmi2-0-dev \
     hwloc \
     libhwloc-dev \
+    libjson-c-dev \
+    libnl-3-dev \
+    libnl-*-3-dev \
+    libconfig-dev \
+    libuv1-dev \
+    fuse \
+    libfuse-dev \
+    libyaml-dev \
+    libsensors-dev \
+    gdb \
     unattended-upgrades \
   && unattended-upgrade \
   && rm -rf /var/lib/apt/lists/* \

@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 
-set -e
+set -x
 
-#DEBIAN_FRONTEND=noninteractive apt-get install -y libnccl-dev libnccl2 --no-install-recommends
+cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
+CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
+    
+git clone https://github.com/nvidia/nccl.git /tmp/nccl_src
 
-export NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80"
 
-git clone https://github.com/nvidia/nccl.git /tmp/det_nccl
+(cd /tmp/nccl_src && git checkout v2.23.4-1)
 
-(cd /tmp/det_nccl && git checkout v2.19.3-1)
+export NVCC_GENCODE="-gencode=arch=compute_90,code=sm_90"
+#make DEBUG=1 NVCC_GENCODE=${NVCC_GENCODE} CUDA_HOME=${CUDA_DIR} PREFIX=${HOROVOD_NCCL_HOME} -C /tmp/nccl_src -j 4 install
+make CUDA_HOME=${CUDA_DIR} NVCC_GENCODE=${NVCC_GENCODE} PREFIX=${HOROVOD_NCCL_HOME} -C /tmp/nccl_src -j 4 install
 
-make PREFIX=${HOROVOD_NCCL_HOME} -C /tmp/det_nccl -j 4 install
+rm -rf /tmp/nccl_src
+
 
