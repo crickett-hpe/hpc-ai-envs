@@ -9,10 +9,10 @@ set -x
 env_file=/etc/hpc-ai-env.sh
 echo "#!/bin/bash" >> $env_file
 
-hpc_cpath="export CPATH=${HPC_DIR}/include:${HPC_DIR}/include/linux:${HPC_DIR}/include/uapi"
+hpc_cpath="export CPATH=${HPC_DIR}/include:${HPC_DIR}/include/linux:${HPC_DIR}/include/uapi:\$CPATH"
 echo $hpc_cpath >> $env_file
 
-hpc_ldpath="export LD_LIBRARY_PATH=${HPC_DIR}/lib:$LD_LIBRARY_PATH"
+hpc_ldpath="export LD_LIBRARY_PATH=${HPC_DIR}/lib:\$LD_LIBRARY_PATH"
 echo $hpc_ldpath >> $env_file
 
 # Add the ${HPC_DIR}/lib to where ld searches

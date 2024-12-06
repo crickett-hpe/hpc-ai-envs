@@ -24,7 +24,7 @@ HOROVOD_GPU_OPERATIONS := NCCL
 # at runtime.
 WITH_MPI ?= 1
 WITH_OFI ?= 1
-WITH_SS11 ?= 1
+WITH_SS11 ?= 0
 CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
 

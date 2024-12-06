@@ -8,7 +8,7 @@ cray_src_dir=/tmp/cray-libs
 mkdir -p $cray_src_dir && \
     cd $cray_src_dir && \
     git clone https://github.com/HewlettPackard/shs-cassini-headers.git && \
-    git clone https://github.com/HewlettPackard/shs-cxi-driver && \
+    git clone https://github.com/HewlettPackard/shs-cxi-driver.git && \
     git clone https://github.com/HewlettPackard/shs-libcxi.git && \
     git clone https://github.com/HewlettPackard/shs-libfabric.git
 
