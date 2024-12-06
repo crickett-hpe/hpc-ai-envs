@@ -20,6 +20,26 @@ RUN python -m pip install  \
     -r ${SCRIPT_DIR}/additional-requirements-torch.txt \
     -r ${SCRIPT_DIR}/additional-requirements.txt
 
+# Put all HPC related tools we build under /container/hpc so we can
+# have a shared include, lib, bin, etc to simplify our paths and build steps.
+ARG HPC_DIR=/container/hpc
+RUN mkdir -p ${HPC_DIR}
+
+# Setup some default env variables. This is for the end user as well
+# as tools we will build since we put include files under HPC_DIR.
+COPY dockerfile_scripts/setup_sh_env.sh ${SCRIPT_DIR}
+RUN ${SCRIPT_DIR}/setup_sh_env.sh
+
+ARG WITH_NCCL
+# If we override NCCL we need to set these env vars for Horovod so that
+# it links against the right one later on when we build it.
+ENV HOROVOD_NCCL_HOME=${WITH_NCCL:+$HPC_DIR}
+ENV HOROVOD_NCCL_LINK=${WITH_NCCL:+SHARED}
+COPY dockerfile_scripts/build_nccl.sh ${SCRIPT_DIR}
+RUN if [ -n "${WITH_NCCL}" ]; then ${SCRIPT_DIR}/build_nccl.sh; fi
+ENV NCCL_LIB_DIR=${HOROVOD_NCCL_HOME}/lib
+ENV LD_LIBRARY_PATH=${WITH_NCCL:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
+
 ENV DEEPSPEED_PIP="deepspeed==0.13.0"
 COPY dockerfile_scripts/install_deepspeed.sh ${SCRIPT_DIR}
 RUN ${SCRIPT_DIR}/install_deepspeed.sh

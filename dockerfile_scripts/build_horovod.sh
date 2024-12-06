@@ -2,6 +2,7 @@
 
 # Try and build a version of Horovod that works with c++-17, which is
 # required by the latest PyTorch
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 export CUDA_HOME=/usr/local/cuda-12
 export HOROVOD_WITHOUT_GLOO=1
 export HOROVOD_CUDA_HOME=/usr/local/cuda

@@ -14,12 +14,27 @@ RUN mkdir -p ${SCRIPT_DIR}
 # Should we just use /container as the install dir and put
 # everything (ie, ucx/ofi/ompi/mpich) under /container/{bin|lib}
 # to clean up these arguments?
-ARG WITH_MPI
+# Put all HPC related tools we build under /container/hpc so we can
+# have a shared include, lib, bin, etc to simplify our paths and build steps.
+ARG HPC_DIR=/container/hpc
+RUN mkdir -p ${HPC_DIR}/bin && \
+    mkdir -p ${HPC_DIR}/lib && \
+    mkdir -p ${HPC_DIR}/include && \
+    mkdir -p ${HPC_DIR}/share && \
+    ln -s ${HPC_DIR}/lib ${HPC_DIR}/lib64
+ENV LD_LIBRARY_PATH=$HPC_DIR/lib:$LD_LIBRARY_PATH
+ENV PATH=$HPC_DIR/bin:$PATH
+
+# Install Cray CXI headers/lib
+COPY dockerfile_scripts/cray-libs.sh ${SCRIPT_DIR}
 ARG WITH_OFI
-ARG MPI_TYPE
+RUN if [ "$WITH_OFI" = "1" ]; then \
+    ${SCRIPT_DIR}/cray-libs.sh ; \
+    fi
+
 # Install all HPC related tools under /container (e.g., mpi, ofi, etc).
-ARG OMPI_INSTALL_DIR=/container/ompi
-ARG OFI_INSTALL_DIR=/container/ofi
+ARG WITH_MPI
+ARG MPI_TYPE
 ARG OMPI_WITH_CUDA=1
 COPY dockerfile_scripts/ompi.sh ${SCRIPT_DIR}
 RUN if [ "$WITH_MPI" = "1" ]; then \
@@ -27,21 +42,14 @@ RUN if [ "$WITH_MPI" = "1" ]; then \
 		 "$WITH_OFI" "$OMPI_WITH_CUDA"; \
     fi
 
-# Add our OMPI/OFI bin/lib dirs to the container paths. 
-ENV LD_LIBRARY_PATH=${WITH_MPI:+$OMPI_INSTALL_DIR/lib:$OFI_INSTALL_DIR/lib:}$LD_LIBRARY_PATH
-ENV PATH=${WITH_MPI:+$OMPI_INSTALL_DIR/bin:$OFI_INSTALL_DIR/bin:}$PATH
-
 # Enable running OMPI as root. Note that we only need this if we use OMPI. 
 ENV OMPI_ALLOW_RUN_AS_ROOT ${WITH_MPI:+1}
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM ${WITH_MPI:+1}
 # Need to override this so we don't try using the OMPI built into the
 # base container, which is not built correctly for libfabric
-ENV OPAL_PREFIX=${WITH_MPI:+$OMPI_INSTALL_DIR}
+ENV OPAL_PREFIX=${WITH_MPI:+$HPC_DIR}
 
-ARG AWS_PLUGIN_INSTALL_DIR=/container/aws
 ARG WITH_AWS_TRACE
-ARG INTERNAL_AWS_DS
-ARG INTERNAL_AWS_PATH
 COPY dockerfile_scripts/build_aws.sh ${SCRIPT_DIR}
 RUN if [ "$WITH_OFI" = "1" ]; then \
     ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_AWS_TRACE"; \
@@ -54,14 +62,6 @@ COPY dockerfile_scripts/build_horovod.sh ${SCRIPT_DIR}
 RUN if [ "$WITH_MPI" = "1" ] ; then \
     ${SCRIPT_DIR}/build_horovod.sh "$WITH_PT" "$WITH_TF"; \
     fi
-
-# See if we were given a non-empty path to a tarball for the SS11
-# libs, and if so, put them into the container and fix up our path
-# so that they can be used rather than the user bind-mounting them at runtime.
-RUN if [ ! -z "$HPC_LIBS_TARBALL" -a "$HPC_LIBS_TARBALL" != "" ]; then \
-    ${SCRIPT_DIR}/install_hpc_libs.sh ; \
-    fi
-ENV LD_LIBRARY_PATH=${HPC_LIBS_TARBALL:+/container/ss11-libs:}$LD_LIBRARY_PATH
 
 # Set an entrypoint that can scrape up the host libfabric.so and then
 # run the user command. This is intended to enable performant execution

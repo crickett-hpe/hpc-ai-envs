@@ -24,7 +24,7 @@ HOROVOD_GPU_OPERATIONS := NCCL
 # at runtime.
 WITH_MPI ?= 1
 WITH_OFI ?= 1
-WITH_SS11 ?= 1
+WITH_SS11 ?= 0
 CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
 
@@ -77,8 +77,8 @@ endif
 
 ifeq "$(WITH_SS11)" "1"
 	ifeq ($(HPC_LIBS_DIR),)
-           LIBFAB_SO=$(shell find $(CRAY_LIBFABRIC_DIR) -name libfabric\*so)
-           LIBCXI_SO=$(shell find $(CRAY_LIBCXI_DIR) -name libcxi\*so)
+           LIBFAB_SO=$(shell find $(CRAY_LIBFABRIC_DIR) -name libfabric\*so.\*)
+           LIBCXI_SO=$(shell find $(CRAY_LIBCXI_DIR) -name libcxi\*so.\*)
            # Make sure we found the libs
            ifneq ($(and $(LIBFAB_SO),$(LIBCXI_SO)),)
               LIBFAB_DIR=$(shell dirname $(LIBFAB_SO))
@@ -134,17 +134,21 @@ build-sif:
 build-pytorch-ngc:
 	docker build -f Dockerfile-pytorch-ngc \
 		--build-arg BASE_IMAGE="$(NGC_PYTORCH_PREFIX):$(NGC_PYTORCH_VERSION)" \
+		--build-arg "$(NCCL_BUILD_ARG)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH) \
 		.
 	docker build -f Dockerfile-ngc-hpc \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
-		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		.
+	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
+	@echo "WITH_SS11: $(WITH_SS11)"
+	@echo "LIBFAB_DIR: $(LIBFAB_DIR)"
+	@echo "LIBCXI_DIR: $(LIBCXI_DIR)"
 ifneq ($(HPC_LIBS_DIR),)
 	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
 	docker build -f Dockerfile-ss \
