@@ -198,7 +198,7 @@ The nccl-tests need to be compiled using the MPI/nccl inside the container:
 
 ```
 $> cd nccl-tests
-$> singularity shell --nv --bind $TMPDIR --bind `pwd` /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev-hvd.sif
+$> singularity shell --nv --bind $TMPDIR --bind `pwd` /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev.sif
 Singularity> make MPI=1 MPI_HOME=/container/ompi
 Singularity> exit
 ```
@@ -210,7 +210,7 @@ four GPUs per node and the SS libraries built into the container:
 
 ```
 $> cd nccl-tests
-$> srun --exclusive -c 72 '--distribution=*:block' --mpi=pmix_v4 -n 512 --ntasks-per-node=4 --cpu-bind=socket --ntasks-per-socket=1 --sockets-per-node=4 singularity run --nv --bind $TMPDIR --bind $HOME --bind `pwd` /path/to/sif/pytorch-ngc-hpc-dev-0050511.sif ./build/all_reduce_perf -b 1M -e 8G -f 2 -n 100 >& out-n$SLURM_NTASKS-ppn4.txt
+$> srun --exclusive -c 72 '--distribution=*:block' --mpi=pmix_v4 -n 512 --ntasks-per-node=4 --cpu-bind=socket --ntasks-per-socket=1 --sockets-per-node=4 singularity run --nv --bind $TMPDIR --bind $HOME --bind `pwd` /path/to/sif/pytorch-ngc-hpc-dev.sif ./build/all_reduce_perf -b 1M -e 8G -f 2 -n 100 >& out-n$SLURM_NTASKS-ppn4.txt
 ```
 
 ##### Bind-mount SS Libraries
@@ -221,7 +221,7 @@ runtime:
 
 ```
 $> cd nccl-tests
-$> env NCCL_ALGO=Tree srun --exclusive -c 72 --distribution=*:block --mpi=pmi2 -n 8 --ntasks-per-node=4 --cpu-bind=socket --ntasks-per-socket=1 --sockets-per-node=4 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev-hvd.sif /projects/benchmarking/public/examples/wrapper.sh ./build/all_reduce_perf -b 1M -e 8G -f 2 -n 100 >& out-n8-ppn4.txt
+$> env NCCL_ALGO=Tree srun --exclusive -c 72 --distribution=*:block --mpi=pmi2 -n 8 --ntasks-per-node=4 --cpu-bind=socket --ntasks-per-socket=1 --sockets-per-node=4 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev.sif /projects/benchmarking/public/examples/wrapper.sh ./build/all_reduce_perf -b 1M -e 8G -f 2 -n 100 >& out-n8-ppn4.txt
 ```
 
 
@@ -273,7 +273,7 @@ An example command for running the benchmark on two nodes with four GPUs
 per node using SS libraries built into the container:
 
 ```
-$> env MASTER_ADDR=`scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` srun --mpi=pmix_v4 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` /path/to/sif/pytorch-ngc-hpc-dev--0050511.sif python /projects/benchmarking/public/examples/ddp/benchmark.py >& benchmark-out-n8-ppn4.txt
+$> env MASTER_ADDR=`scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` srun --mpi=pmix_v4 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` /path/to/sif/pytorch-ngc-hpc-dev.sif python /projects/benchmarking/public/examples/ddp/benchmark.py >& benchmark-out-n8-ppn4.txt
 ```
 
 ##### Bind-mount SS Libraries
@@ -282,7 +282,7 @@ An example command for running the benchmark on two nodes with four GPUs
 per node using bind-mounted SS libraries:
 
 ```
-$> env MASTER_ADDR=`scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` srun --mpi=pmi2 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` --bind /projects/benchmarking/public --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev-hvd.sif /projects/benchmarking/public/examples/wrapper.sh python /projects/benchmarking/public/examples/ddp/benchmark.py >& benchmark-out-n8-ppn4.txt
+$> env MASTER_ADDR=`scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` srun --mpi=pmi2 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` --bind /projects/benchmarking/public --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev.sif /projects/benchmarking/public/examples/wrapper.sh python /projects/benchmarking/public/examples/ddp/benchmark.py >& benchmark-out-n8-ppn4.txt
 ```
 
 #### Example Output
@@ -362,14 +362,14 @@ that of the TF container and updating the path to the TF2 benchmark.
 
 ```
 $> cd horovod
-$> srun --mpi=pmix_v4 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` /path/to/sif/pytorch-ngc-hpc-dev-0050511.sif python ./examples/pytorch/pytorch_synthetic_benchmark.py --batch-size=96 --fp16-allreduce >& pt-syn-n8-ppn4.txt
+$> srun --mpi=pmix_v4 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` /path/to/sif/pytorch-ngc-hpc-dev.sif python ./examples/pytorch/pytorch_synthetic_benchmark.py --batch-size=96 --fp16-allreduce >& pt-syn-n8-ppn4.txt
 ```
 
 ##### Bind-mount SS Libraries
 
 ```
 $> cd horovod
-$> srun --mpi=pmi2 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev-hvd.sif /projects/benchmarking/public/examples/wrapper.sh python ./examples/pytorch/pytorch_synthetic_benchmark.py --batch-size=96 --fp16-allreduce >& pt-syn-n8-ppn4.txt
+$> srun --mpi=pmi2 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev.sif /projects/benchmarking/public/examples/wrapper.sh python ./examples/pytorch/pytorch_synthetic_benchmark.py --batch-size=96 --fp16-allreduce >& pt-syn-n8-ppn4.txt
 ```
 
 #### Example Output
@@ -551,13 +551,13 @@ The example below runs on two nodes and uses four GPUs per node.
 ##### SS Containerized Libraries
 
 ```
-$> env MASTER_ADDR=`scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` srun --mpi=pmix_v4 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind $TMPDIR --bind $HOME --bind `pwd` /path/to/sif/pytorch-ngc-hpc-dev-0050511.sif /projects/benchmarking/public/examples/llama-2/ds-wrapper.sh python /projects/benchmarking/public/examples/llama-2/transformers/examples/pytorch/language-modeling/run_clm.py --model_name_or_path meta-llama/Llama-2-7b-hf --dataset_name wikitext --dataset_config_name wikitext-2-v1 --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --do_train --do_eval --output_dir `pwd`/output --overwrite_output_dir --token=<YOUR_HF_TOKEN_HERE> --block_size 4096 --torch_dtype=bfloat16 --bf16=True --deepspeed=/projects/benchmarking/public/examples/llama-2/ds_config.json --gradient_checkpointing=True >& out-n8-ppn4.txt
+$> env MASTER_ADDR=`scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` srun --mpi=pmix_v4 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind $TMPDIR --bind $HOME --bind `pwd` /path/to/sif/pytorch-ngc-hpc-dev.sif /projects/benchmarking/public/examples/llama-2/ds-wrapper.sh python /projects/benchmarking/public/examples/llama-2/transformers/examples/pytorch/language-modeling/run_clm.py --model_name_or_path meta-llama/Llama-2-7b-hf --dataset_name wikitext --dataset_config_name wikitext-2-v1 --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --do_train --do_eval --output_dir `pwd`/output --overwrite_output_dir --token=<YOUR_HF_TOKEN_HERE> --block_size 4096 --torch_dtype=bfloat16 --bf16=True --deepspeed=/projects/benchmarking/public/examples/llama-2/ds_config.json --gradient_checkpointing=True >& out-n8-ppn4.txt
 ```
 
 ##### Bind-mount SS Libraries
 
 ```
-$> env MASTER_ADDR=`scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` srun --mpi=pmi2 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev-hvd.sif /projects/benchmarking/public/examples/llama-2/ds-wrapper.sh python /projects/benchmarking/public/examples/llama-2/transformers/examples/pytorch/language-modeling/run_clm.py --model_name_or_path meta-llama/Llama-2-7b-hf --dataset_name wikitext --dataset_config_name wikitext-2-v1 --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --do_train --do_eval --output_dir `pwd`/output --overwrite_output_dir --token=<YOUR_HF_TOKEN_HERE> --block_size 4096 --torch_dtype=bfloat16 --bf16=True --deepspeed=/projects/benchmarking/public/examples/llama-2/ds_config.json --gradient_checkpointing=True >& out-n8-ppn4.txt
+$> env MASTER_ADDR=`scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` srun --mpi=pmi2 -n 8 --ntasks-per-node=4 --distribution=*:block --cpu-bind=socket --ntasks-per-socket=1 -c 72 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` --bind /opt/cray/libfabric/1.15.2.0/lib64:/host/lib,/usr:/host/usr /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev.sif /projects/benchmarking/public/examples/llama-2/ds-wrapper.sh python /projects/benchmarking/public/examples/llama-2/transformers/examples/pytorch/language-modeling/run_clm.py --model_name_or_path meta-llama/Llama-2-7b-hf --dataset_name wikitext --dataset_config_name wikitext-2-v1 --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --do_train --do_eval --output_dir `pwd`/output --overwrite_output_dir --token=<YOUR_HF_TOKEN_HERE> --block_size 4096 --torch_dtype=bfloat16 --bf16=True --deepspeed=/projects/benchmarking/public/examples/llama-2/ds_config.json --gradient_checkpointing=True >& out-n8-ppn4.txt
 ```
 
 #### Example Output
