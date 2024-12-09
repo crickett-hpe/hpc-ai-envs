@@ -199,7 +199,7 @@ The nccl-tests need to be compiled using the MPI/nccl inside the container:
 ```
 $> cd nccl-tests
 $> singularity shell --nv --bind $TMPDIR --bind `pwd` /projects/benchmarking/public/sif/pytorch-ngc-hpc-dev.sif
-Singularity> make MPI=1 MPI_HOME=/container/ompi
+Singularity> make MPI=1 MPI_HOME=/container/hpc
 Singularity> exit
 ```
 
