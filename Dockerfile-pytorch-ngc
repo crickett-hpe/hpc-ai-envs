@@ -40,7 +40,7 @@ RUN if [ -n "${WITH_NCCL}" ]; then ${SCRIPT_DIR}/build_nccl.sh; fi
 ENV NCCL_LIB_DIR=${HOROVOD_NCCL_HOME}/lib
 ENV LD_LIBRARY_PATH=${WITH_NCCL:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
 
-ENV DEEPSPEED_PIP="deepspeed==0.13.0"
+ENV DEEPSPEED_PIP="deepspeed==0.16.1"
 COPY dockerfile_scripts/install_deepspeed.sh ${SCRIPT_DIR}
 RUN ${SCRIPT_DIR}/install_deepspeed.sh
 

@@ -56,3 +56,8 @@ mkdir -p ${AWS_SRC_DIR}                           && \
     make install                                  && \
     cd /tmp                                       && \
     rm -rf ${AWS_SRC_DIR}
+
+# The NGC base image from 24.11 and newer seems to include a build of
+# the AWS plugin. We need to remove it to prevent issues that could
+# occur if that version is loaded instead of the one we built here.
+rm -rf /opt/amazon
