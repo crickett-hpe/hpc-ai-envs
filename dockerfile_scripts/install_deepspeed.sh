@@ -5,10 +5,10 @@ set -e
 apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y pdsh libaio-dev
 
 #Older versions of deepspeed require pinned pydantic version
-python -m pip install pydantic==1.10.11
+python -m pip install pydantic
 
 # Install some dependencies for the LLM test
-pip install accelerate==0.22.0 arrow==1.2.3 datasets==2.14.5 huggingface-hub==0.17.3 packaging==23.1 safetensors==0.3.3 setuptools==65.7.0 tokenizers==0.14.1 transformers==4.34.1 xxhash==3.3.0 evaluate
+pip install accelerate arrow datasets huggingface-hub packaging safetensors setuptools tokenizers transformers xxhash evaluate
 #Precompile deepspeed ops except sparse_attn which has dubious support
 # Skip precompiling since this fails when using the NGC base image.
 # Need to verify that DS can use NCCL correctly for the comms, etc.

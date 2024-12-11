@@ -102,10 +102,10 @@ endif
 
 NGC_PYTORCH_PREFIX := nvcr.io/nvidia/pytorch
 NGC_TENSORFLOW_PREFIX := nvcr.io/nvidia/tensorflow
-NGC_PYTORCH_VERSION := 24.03-py3
+NGC_PYTORCH_VERSION := 24.11-py3
 NGC_TENSORFLOW_VERSION := 24.03-tf2-py3
-NGC_PYTORCH_REPO := pytorch-ngc-dev
-NGC_PYTORCH_HPC_REPO := pytorch-ngc-hpc-dev
+NGC_PYTORCH_REPO := ngc-$(NGC_PYTORCH_VERSION)-pt
+NGC_PYTORCH_HPC_REPO := ngc-$(NGC_PYTORCH_VERSION)-pt-hpc
 NGC_TF_REPO := tensorflow-ngc-dev
 NGC_TF_HPC_REPO := tensorflow-ngc-hpc-dev
 

@@ -135,5 +135,15 @@ if command -v nvidia-smi >/dev/null 2>&1; then
     fi # end if [ -n $CUDA_DRIVER_VERSION ]
 fi # end if nvidia-smi binary exists
 
+# The base ngc container started including a build of the AWS OFI plugin.
+# When running on SS11 systems trying to use the OFI plugin built inside
+# this container, our tests could seg fault when trying to init nccl
+# if we do not preload our version of the plugin. Note that our LD_LIBRARY_PATH
+# points to our library first but we still need to preload our lib otherwise
+# we can segfault if the one from the ngc base image exists.
+if [ -r /container/hpc/lib/libnccl-net.so ]; then
+    export LD_PRELOAD=/container/hpc/lib/libnccl-net.so:$LD_PRELOAD
+fi
+
 # Execute what we were told to execute
 exec "${@}"
