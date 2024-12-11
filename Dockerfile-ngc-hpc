@@ -11,9 +11,6 @@ RUN mkdir -p ${SCRIPT_DIR}
 # torch from source and enabling torch distributed with mpi backend.
 #RUN rm -rf /opt/hpcx /usr/local/mpi
 
-# Should we just use /container as the install dir and put
-# everything (ie, ucx/ofi/ompi/mpich) under /container/{bin|lib}
-# to clean up these arguments?
 # Put all HPC related tools we build under /container/hpc so we can
 # have a shared include, lib, bin, etc to simplify our paths and build steps.
 ARG HPC_DIR=/container/hpc
@@ -21,10 +18,29 @@ RUN mkdir -p ${HPC_DIR}/bin && \
     mkdir -p ${HPC_DIR}/lib && \
     mkdir -p ${HPC_DIR}/include && \
     mkdir -p ${HPC_DIR}/share && \
-    ln -s ${HPC_DIR}/lib ${HPC_DIR}/lib64
+    ln -s ${HPC_DIR}/lib ${HPC_DIR}/lib64 && \
+    chmod -R go+rX ${HPC_DIR}
 ENV LD_LIBRARY_PATH=$HPC_DIR/lib:$LD_LIBRARY_PATH
 ENV PATH=$HPC_DIR/bin:$PATH
 
+# Setup some default env variables. This is for the end user as well
+# as tools we will build since we put include files under HPC_DIR.
+COPY dockerfile_scripts/setup_sh_env.sh ${SCRIPT_DIR}
+RUN ${SCRIPT_DIR}/setup_sh_env.sh
+
+ARG WITH_NCCL
+# If we override NCCL we need to set these env vars for Horovod so that
+# it links against the right one later on when we build it.
+ENV HOROVOD_NCCL_HOME=${WITH_NCCL:+$HPC_DIR}
+ENV HOROVOD_NCCL_LINK=${WITH_NCCL:+SHARED}
+COPY dockerfile_scripts/build_nccl.sh ${SCRIPT_DIR}
+RUN if [ -n "${WITH_NCCL}" ]; then ${SCRIPT_DIR}/build_nccl.sh; fi
+ENV NCCL_LIB_DIR=${HOROVOD_NCCL_HOME}/lib
+ENV LD_LIBRARY_PATH=${WITH_NCCL:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
+
+# Should we just use /container as the install dir and put
+# everything (ie, ucx/ofi/ompi/mpich) under /container/{bin|lib}
+# to clean up these arguments?
 # Install Cray CXI headers/lib
 COPY dockerfile_scripts/cray-libs.sh ${SCRIPT_DIR}
 ARG WITH_OFI
