@@ -38,6 +38,11 @@ RUN if [ -n "${WITH_NCCL}" ]; then ${SCRIPT_DIR}/build_nccl.sh; fi
 ENV NCCL_LIB_DIR=${HOROVOD_NCCL_HOME}/lib
 ENV LD_LIBRARY_PATH=${WITH_NCCL:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
 
+# We run this here even though it might be a repeat from the base image
+# to make sure we have the required bits for building libcxi, etc.
+COPY dockerfile_scripts/install_deb_packages.sh ${SCRIPT_DIR}
+RUN ${SCRIPT_DIR}/install_deb_packages.sh
+
 # Should we just use /container as the install dir and put
 # everything (ie, ucx/ofi/ompi/mpich) under /container/{bin|lib}
 # to clean up these arguments?
