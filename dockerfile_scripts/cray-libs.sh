@@ -2,6 +2,14 @@
 
 set -x
 
+# The NGC base image from 24.11 and newer seems to include a build of
+# libfabric and the AWS plugin. We need to remove it to prevent issues
+# that could occur if that version is loaded instead of the libfabric/ofi
+# libraries we build here.
+if [ -d "/opt/amazon" ] ; then
+    rm -rf /opt/amazon
+fi
+
 # Install Cray libcxi. This requires grabbing the cassini/cxi headers
 # and installing them into ${HPC_DIR} so we can compile libcxi.
 cray_src_dir=/tmp/cray-libs

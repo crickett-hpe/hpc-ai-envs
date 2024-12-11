@@ -143,6 +143,28 @@ $> docker save -o pytorch-ngc-hpc-dev-ss-053a634.tar cray/pytorch-ngc-hpc-dev-ss
 $> singularity build pytorch-ngc-hpc-dev-ss-053a634.sif docker-archive:/path/to/docker/tarball/pytorch-ngc-hpc-dev-ss-053a634.tar
 ```
 
+### User Specified Images
+
+Users can specify which base image to use to simply have the required
+SS related libs (ie, CXI, OFI and AWS OFI) added to their
+containers. This should make it easier for users to update images that
+have the desired packages to work well with NCCL over SS. To enable
+this, the user can specify the build target `build-user-spec-ngc` and
+pass the base image name to use with the argument
+USER_NGC_BASE_IMAGE. For example, the following could be used to build
+the HPC version of the base image that will compile in the CXI,
+libfabric and AWS OFI plugin:
+
+```
+make build-user-spec-ngc USER_NGC_BASE_IMAGE=cray/ngc-24.11-py3-pt:5a96988
+```
+
+If successful, this will create the new `-hpc` version of the image:
+
+```
+Successfully tagged localhost/cray/ngc-24.11-py3-pt-hpc:5a96988
+```
+
 ## Examples
 
 The following examples illustrate how to run various AI benchmarks
