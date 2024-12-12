@@ -105,7 +105,6 @@ endif
 # likely modify this to work for both and have a separate flag to specify
 # nccl/rccl, etc, to keep things cleaner.
 ifneq ($(USER_NGC_BASE_IMAGE),)
-        $(shell echo "$(USER_NGC_BASE_IMAGE)" > tmp-user.txt)
         USER_NGC_IMAGE_REPO=$(shell echo "$(USER_NGC_BASE_IMAGE)" | awk 'BEGIN{FS=OFS="/"}{NF--; print}')
         USER_NGC_IMAGE_NAME=$(shell echo "$(USER_NGC_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$1}')
         USER_NGC_IMAGE_VER=$(shell echo "$(USER_NGC_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$NF}')
