@@ -105,7 +105,6 @@ endif
 # likely modify this to work for both and have a separate flag to specify
 # nccl/rccl, etc, to keep things cleaner.
 ifneq ($(USER_NGC_BASE_IMAGE),)
-        $(shell echo "$(USER_NGC_BASE_IMAGE)" > tmp-user.txt)
         USER_NGC_IMAGE_REPO=$(shell echo "$(USER_NGC_BASE_IMAGE)" | awk 'BEGIN{FS=OFS="/"}{NF--; print}')
         USER_NGC_IMAGE_NAME=$(shell echo "$(USER_NGC_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$1}')
         USER_NGC_IMAGE_VER=$(shell echo "$(USER_NGC_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$NF}')
@@ -137,7 +136,7 @@ endif
 build-sif:
 	# Make a tmp dir in the cwd using the tmp_file name.
 	mkdir $(TMP_SIF_BASE)
-	docker save -o "$(TARGET_NAME).tar" $(DOCKERHUB_REGISTRY)/$(TARGET_TAG)
+	docker save -o "$(TARGET_NAME).tar" $(TARGET_TAG)
 	env $(SING_DIRS) \
             SINGULARITY_NOHTTPS=true NAMESPACE="" \
             singularity -vvv build $(TARGET_NAME).sif \
@@ -176,12 +175,14 @@ ifneq ($(HPC_LIBS_DIR),)
         endif
         ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_TAG="$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)" TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)" \
+                          TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
         endif
 else
         ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_TAG="$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)" TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)" \
+                          TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
         endif
 endif
 
@@ -255,12 +256,14 @@ ifneq ($(HPC_LIBS_DIR),)
 	endif
         ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(NGC_TF_HPC_REPO)-ss:$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_TAG="$(NGC_TF_HPC_REPO)-ss:$(SHORT_GIT_HASH)" TARGET_NAME="$(NGC_TF_HPC_REPO)-$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO)-ss:$(SHORT_GIT_HASH)" \
+                          TARGET_NAME="$(NGC_TF_HPC_REPO)-$(SHORT_GIT_HASH)"
         endif
 else
         ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_TAG="$(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH)" TARGET_NAME="$(NGC_TF_HPC_REPO)-$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH)" \
+                          TARGET_NAME="$(NGC_TF_HPC_REPO)-$(SHORT_GIT_HASH)"
         endif
 endif
 
