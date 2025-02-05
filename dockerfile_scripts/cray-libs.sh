@@ -33,7 +33,7 @@ cd $cray_src_dir/shs-cxi-driver && \
     cp -r include ${HPC_DIR} && \
     cp include/linux/cxi.h ${HPC_DIR}/include && \
     cd ../
-    
+
 # Build libcxi. Note that this will install into ${HPC_DIR} by default,
 # which is what we want so that libfabric/ompi/aws can easily find it.
 #cxi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0" 
@@ -62,24 +62,40 @@ if [ -n $CUDA_VERSION ] ; then
     cuda_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
 fi
 
-# Build and install libfabric. Note that this should see the cxi bits
-# and enable cxi support. It should also install into ${HPC_DIR} so that
-# it is easier for ompi/aws to find it.
-cray_ofi_config_opts="--prefix=${HPC_DIR} --with-cassini-headers=${HPC_DIR} --with-cxi-uapi-headers=${HPC_DIR} --enable-cxi=${HPC_DIR} $cuda_opt --enable-cuda-dlopen --enable-gdrcopy-dlopen --disable-sockets --disable-udp --disable-verbs --disable-mrail --disable-rxd --disable-shm --disable-usnic --disable-rstream --disable-efa --disable-psm2 --disable-psm3 --disable-opx"
-#ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0" 
-#ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0"
-ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi" 
-ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi"
-cd $cray_src_dir && \
-    git clone https://github.com/ofiwg/libfabric.git && \
-    cd libfabric && \
-    git checkout -b v2.0.x && \
-    ./autogen.sh && \
-    ./configure CFLAGS="${ofi_cflags}" CPPFLAGS="${ofi_cppflags}" \
-		$cray_ofi_config_opts && \
-    make && \
-    make install && \
-    cd ../
+## Build and install libfabric. Note that this should see the cxi bits
+## and enable cxi support. It should also install into ${HPC_DIR} so that
+## it is easier for ompi/aws to find it.
+#cray_ofi_config_opts="--prefix=${HPC_DIR} --with-cassini-headers=${HPC_DIR} --with-cxi-uapi-headers=${HPC_DIR} --enable-cxi=${HPC_DIR} $cuda_opt --enable-cuda-dlopen --enable-gdrcopy-dlopen --disable-sockets --disable-udp --disable-verbs --disable-mrail --disable-rxd --disable-shm --disable-usnic --disable-rstream --disable-efa --disable-psm2 --disable-psm3 --disable-opx"
+##ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0" 
+##ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0"
+#ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi" 
+#ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi"
+#cd $cray_src_dir && \
+#    git clone https://github.com/ofiwg/libfabric.git && \
+#    cd libfabric && \
+#    git checkout -b v2.0.x && \
+#    ./autogen.sh && \
+#    ./configure CFLAGS="${ofi_cflags}" CPPFLAGS="${ofi_cppflags}" \
+#		$cray_ofi_config_opts && \
+#    make && \
+#    make install && \
+#    cd ../
+
+# Install OFI
+OFI_VER=1.19.1
+OFI_CONFIG_OPTIONS="--prefix ${HPC_DIR}"
+OFI_SRC_DIR=/tmp/ofi-src
+OFI_BASE_URL="https://github.com/ofiwg/libfabric/releases/download"
+OFI_URL="${OFI_BASE_URL}/v${OFI_VER}/libfabric-${OFI_VER}.tar.bz2"
+mkdir -p ${OFI_SRC_DIR}                                  && \
+    cd ${OFI_SRC_DIR}                                    && \
+    wget ${OFI_URL}                                      && \
+    tar -xf libfabric-${OFI_VER}.tar.bz2 --no-same-owner && \
+    cd libfabric-${OFI_VER}                              && \
+    ./configure ${OFI_CONFIG_OPTIONS}                    && \
+    make install                                         && \
+    cd /tmp                                              && \
+    rm -rf ${OFI_SRC_DIR}
 
 #cd $cray_src_dir/shs-libfabric && \
 #    git checkout -b v2.0.x && \
