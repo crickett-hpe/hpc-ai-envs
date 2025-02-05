@@ -176,7 +176,7 @@ ifneq ($(HPC_LIBS_DIR),)
         ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)"
 	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)" \
-                          TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
+                          TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-ss-$(SHORT_GIT_HASH)"
         endif
 else
         ifeq "$(BUILD_SIF)" "1"
