@@ -32,12 +32,28 @@ GDRCOPY_HOME="/usr"
 #     CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
 # fi
 # Cuda path, including version. This should be sufficient for the build
-CUDA_DIR=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
+CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
 
-AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR} \
-	  --with-libfabric=${HPC_DIR}            \
-	  --with-mpi=${HPC_DIR}                 \
+AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}             \
+	  --with-libfabric=${HPC_DIR}               \
+	  --with-mpi=${HPC_DIR}                     \
 	  --with-cuda=${CUDA_DIR} ${WITH_AWS_TRACE}"
+
+# FI_MR_DMABUF:
+# This flag indicates that the memory region to registered is
+# a DMA-buf backed region. When set, the region is specified through
+# the dmabuf field of the fi_mr_attr structure. This flag is only
+# usable for domains opened with FI_HMEM capability support.
+# This flag is introduced since Libfabric 1.20.
+#
+# When this flag was left default with 'yes' it seems to cause
+# seg-fault on internal A100 sytem (pinoak)
+ARCH_TYPE=`uname -m`
+if [ $ARCH_TYPE == "x86_64" ]; then
+    AWS_CONFIG_OPTIONS="$AWS_CONFIG_OPTIONS \
+	    ac_cv_have_decl_FI_MR_DMABUF=no"
+fi
+
 AWS_SRC_DIR=/tmp/aws-ofi-nccl
 AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/archive/refs/tags"
 AWS_URL="${AWS_BASE_URL}/${AWS_VER}.tar.gz"
