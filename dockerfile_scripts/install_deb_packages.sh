@@ -10,6 +10,7 @@ apt-get update \
     build-essential \
     ca-certificates \
     curl \
+    libcurl4-openssl-dev \
     daemontools \
     debhelper \
     devscripts \
