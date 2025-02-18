@@ -15,7 +15,7 @@ if [ -n $CUDA_VERSION ] ; then
     cuda_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
 fi
 
-OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR} --without-ucx --with-pmix=internal --with-cuda=${cuda_opt}"
+OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR} --without-ucx --with-pmix=internal ${cuda_opt} --with-cuda-libdir=/usr/local/cuda-$cuda_ver_str/lib64/stubs"
 
 # Install OMPI
 OMPI_VER=v5.0
