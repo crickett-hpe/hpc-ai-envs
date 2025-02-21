@@ -84,6 +84,12 @@ RUN if [ "$WITH_MPI" = "1" ] ; then \
     ${SCRIPT_DIR}/build_horovod.sh "$WITH_PT" "$WITH_TF"; \
     fi
 
+# If we built MPI, override any MPI in /usr/local/mpi that might
+# have been installed by NVIDIA targeting IB.
+RUN if [ "$WITH_MPI" = "1" ] ; then \
+    rm -rf /usr/local/mpi && ln -s /container/hpc /usr/local/mpi; \
+fi
+
 # Set an entrypoint that can scrape up the host libfabric.so and then
 # run the user command. This is intended to enable performant execution
 # on non-IB systems that have a proprietary libfabric.
