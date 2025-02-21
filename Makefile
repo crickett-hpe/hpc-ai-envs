@@ -10,12 +10,14 @@ CPU_PREFIX_310 := $(REGISTRY_REPO):py-3.10-
 ROCM_56_PREFIX := $(REGISTRY_REPO):rocm-5.6-
 ROCM_57_PREFIX := $(REGISTRY_REPO):rocm-5.7-
 ROCM_60_PREFIX := $(REGISTRY_REPO):rocm-6.0-
+ROCM_63_PREFIX := $(REGISTRY_REPO):rocm-6.3-
 
 CPU_SUFFIX := -cpu
 CUDA_SUFFIX := -cuda
 PLATFORM_LINUX_ARM_64 := linux/arm64
 PLATFORM_LINUX_AMD_64 := linux/amd64
 HOROVOD_GPU_OPERATIONS := NCCL
+BUILD_OPTS ?=
 
 # Default to enabling MPI, OFI and SS11. Note that if we cannot
 # find the SS11 libs automatically and the user did not provide
@@ -146,11 +148,11 @@ build-sif:
 # build hpc together since hpc is dependent on the normal build
 .PHONY: build-pytorch-ngc
 build-pytorch-ngc:
-	docker build -f Dockerfile-pytorch-ngc \
+	docker build -f Dockerfile-pytorch-ngc $(BUILD_OPTS) \
 		--build-arg BASE_IMAGE="$(NGC_PYTORCH_PREFIX):$(NGC_PYTORCH_VERSION)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH) \
 		.
-	docker build -f Dockerfile-ngc-hpc \
+	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
@@ -165,7 +167,7 @@ build-pytorch-ngc:
 	@echo "LIBCXI_DIR: $(LIBCXI_DIR)"
 ifneq ($(HPC_LIBS_DIR),)
 	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
-	docker build -f Dockerfile-ss \
+	docker build -f Dockerfile-ss $(BUILD_OPTS) \
 		--build-arg BASE_IMAGE=$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH) \
@@ -334,6 +336,41 @@ build-pytorch20-tf210-rocm60:
 		-t $(DOCKERHUB_REGISTRY)/$(ROCM60_TORCH_TF_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
 		-t $(DOCKERHUB_REGISTRY)/$(ROCM60_TORCH_TF_ENVIRONMENT_NAME)-$(VERSION) \
 		.
+ifeq ($(WITH_MPICH),1)
+ROCM63_TORCH_MPI :=pytorch-2.4-tf-2.10-rocm-mpich
+else
+ROCM63_TORCH_MPI :=pytorch-2.4-tf-2.10-rocm-ompi
+endif
+ROCM_PYTORCH_VERSION := 24.11-py3
+ROCM_PYTORCH_REPO := rocm-$(ROCM_PYTORCH_VERSION)-pt
+ROCM_PYTORCH_HPC_REPO := rocm-$(ROCM_PYTORCH_VERSION)-pt-hpc
+export ROCM63_TORCH_TF_ENVIRONMENT_NAME := $(ROCM_60_PREFIX)$(ROCM63_TORCH_MPI)
+.PHONY: build-pytorch-rocm63
+build-pytorch-rocm:
+	docker build -f Dockerfile-pytorch-rocm $(BUILD_OPTS) \
+		--build-arg BASE_IMAGE="rocm/pytorch:rocm6.3_ubuntu22.04_py3.10_pytorch_release_2.4.0" \
+		--build-arg WITH_MPICH=$(WITH_MPICH) \
+		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH) \
+		-t $(DOCKERHUB_REGISTRY)/$(ROCM63_TORCH_TF_ENVIRONMENT_NAME)-$(VERSION) \
+		.
+	@echo "ROCM63_TORCH_TF_ENVIRONMENT_NAME: $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH)"
+	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
+		--build-arg TENSORFLOW_PIP="tensorflow-rocm==2.10.1.540" \
+		--build-arg HOROVOD_PIP="horovod==0.28.1" \
+		--build-arg "$(NCCL_BUILD_ARG)" \
+		--build-arg "$(MPI_BUILD_ARG)" \
+		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "WITH_PT=1" \
+		--build-arg "WITH_TF=0" \
+		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
+		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
+		.
+ifeq "$(BUILD_SIF)" "1"
+	    @echo "BUILD_SIF: $(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)" \
+                          TARGET_NAME="$(ROCM_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
+endif
+
 
 DEEPSPEED_VERSION := 0.8.3
 export TORCH_TB_PROFILER_PIP := torch-tb-profiler==0.4.1
