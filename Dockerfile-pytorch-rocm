@@ -4,7 +4,7 @@ FROM ${BASE_IMAGE}
 RUN apt remove -y openmpi ucx || true
 #Let's remove existing /opt/ompi; and, link to our version.
 RUN rm -rf /opt/ompi 
-RUN ln -s /container/ompi /opt 
+RUN ln -s /container/hpc /opt/ompi
 
 RUN rm /etc/apt/sources.list.d/rocm.list
 

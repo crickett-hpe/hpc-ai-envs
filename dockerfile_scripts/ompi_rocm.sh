@@ -18,7 +18,7 @@ OFI=$2
 if [ "$OFI" = "1" ]; then
   # Install OFI
   OFI_VER=1.19.0
-  OFI_CONFIG_OPTIONS="--prefix ${OFI_INSTALL_DIR}"
+  OFI_CONFIG_OPTIONS="--prefix ${HPC_DIR}"
   OFI_SRC_DIR=/tmp/ofi-src
   OFI_BASE_URL="https://github.com/ofiwg/libfabric/releases/download"
   OFI_URL="${OFI_BASE_URL}/v${OFI_VER}/libfabric-${OFI_VER}.tar.bz2"
@@ -35,7 +35,9 @@ if [ "$OFI" = "1" ]; then
     rm -rf ${OFI_SRC_DIR}
 
   #OMPI CONFIG ARGS FOR OFI
-  OMPI_CONFIG_OPTIONS_VAR="--prefix ${OMPI_INSTALL_DIR} --enable-orterun-prefix-by-default --enable-shared --with-cma --with-pic --enable-mpi-cxx --enable-mpi-thread-multiple --with-libfabric=${OFI_INSTALL_DIR} --without-ucx --with-pmi --with-pmix=internal ${OMPI_WITH_ROCM}"
+  # NCCL build OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR} --without-ucx --with-pmix=internal --with-cuda=${cuda_opt}"
+
+  OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR} --without-ucx --with-pmix=internal ${OMPI_WITH_ROCM}"
 
 #echo OMPI_CONFIG_OPTIONS_VAR $OMPI_CONFIG_OPTIONS_VAR= 
 
@@ -87,8 +89,8 @@ fi
 
 if [ "$WITH_MPICH" != "1" ]; then
 # Install OMPI
-OMPI_VER=v4.1
- OMPI_VER_NUM=4.1.0
+ OMPI_VER=v5.0
+ OMPI_VER_NUM=5.0.6
  OMPI_CONFIG_OPTIONS=${OMPI_CONFIG_OPTIONS_VAR}
  OMPI_SRC_DIR=/tmp/openmpi-src
  OMPI_BASE_URL="https://download.open-mpi.org/release/open-mpi"
@@ -106,7 +108,7 @@ OMPI_VER=v4.1
    rm -rf ${OMPI_SRC_DIR}
 else
 MPICH_VER=4.1.2
-MPICH_CONFIG_OPTIONS="--with-device=ch4:ofi --with-libfabric=/container/ofi --prefix=${MPICH_INSTALL_DIR} --disable-fortran"
+MPICH_CONFIG_OPTIONS="--with-device=ch4:ofi --with-libfabric=${HPC_DIR} --prefix=${HPC_DIR} --disable-fortran"
 MPICH_URL="http://www.mpich.org/static/downloads/${MPICH_VER}/mpich-${MPICH_VER}.tar.gz"
 MPICH_SRC_DIR=/tmp/mpich-src
 

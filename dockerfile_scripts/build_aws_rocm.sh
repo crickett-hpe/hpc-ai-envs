@@ -33,13 +33,13 @@ if [ "$OFI" = "1" ]; then
   cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
   CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/x86_64-linux"
   GDRCOPY_HOME="/usr"
-  OFI_INSTALL_DIR=/container/ofi
+  OFI_INSTALL_DIR=${HPC_DIR}
   ls $OFI_INSTALL_DIR
-  [ "$WITH_MPICH" = "1" ]&&MPI_INSTALL_DIR=${MPICH_INSTALL_DIR}||MPI_INSTALL_DIR=${OMPI_INSTALL_DIR}
-  AWS_CONFIG_OPTIONS="--prefix ${AWS_PLUGIN_INSTALL_DIR} \
-	  --with-libfabric=${OFI_INSTALL_DIR}            \
+  [ "$WITH_MPICH" = "1" ]&&MPI_INSTALL_DIR=${HPC_DIR}||MPI_INSTALL_DIR=${HPC_DIR}
+  AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR} \
+	  --with-libfabric=${HPC_DIR}            \
 	  --with-rccl=${HOROVOD_NCCL_HOME}               \
-	  --with-mpi=${MPI_INSTALL_DIR}                  \
+	  --with-mpi=${HPC_DIR}                  \
 	  --with-hip=${ROCM_DIR} ${WITH_AWS_TRACE}"
 
   AWS_SRC_DIR=/tmp/aws-ofi-rccl
