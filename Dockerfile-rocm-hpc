@@ -104,12 +104,6 @@ ENV PATH=${PATH:-$CONDA:${WITH_MPI:+$UCX_PATH_DIR:$OMPI_PATH_DIR}}
 ENV OMPI_ALLOW_RUN_AS_ROOT ${WITH_MPI:+1}
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM ${WITH_MPI:+1}
 
-
-
-RUN pip install cloudpickle
-RUN pip install determined && pip uninstall -y determined
-RUN pip install google-auth-oauthlib
-
 # google-api-python-client -> google-api-core -> googleapis-common-protos -> protobuf
 # Horovod cannot build with protobuf > 3.20.x
 # latest google-api-python-client requires protobuf >= 3.20.1
