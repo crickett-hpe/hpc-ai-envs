@@ -1,25 +1,51 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-RUN apt remove -y openmpi ucx || true
+RUN apt remove -y openmpi ucx
 #Let's remove existing /opt/ompi; and, link to our version.
 RUN rm -rf /opt/ompi 
 RUN ln -s /container/ompi /opt 
 
+RUN mkdir -p /var/run/sshd
 RUN rm /etc/apt/sources.list.d/rocm.list
+RUN apt-get update \
+        && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                autoconf \
+                automake \
+                autotools-dev \
+                build-essential \
+                ca-certificates \
+                curl \
+                daemontools \
+                glibc-source \
+                ibverbs-providers \
+                libibverbs1 \
+                libkrb5-dev \
+                librdmacm1 \
+                libssl-dev \
+                libtool \
+                git \
+                krb5-user \
+                cmake \
+                g++ \
+                make \
+                openssh-client \
+                openssh-server \
+                pkg-config \
+                wget \
+                nfs-common \
+                libnuma1 \
+                libnuma-dev \
+                libpmi2-0-dev \
+                unattended-upgrades \
+        && unattended-upgrade \
+        && rm -rf /var/lib/apt/lists/* \
+        && rm /etc/ssh/ssh_host_ecdsa_key \
+        && rm /etc/ssh/ssh_host_ed25519_key \
+        && rm /etc/ssh/ssh_host_rsa_key
+RUN pip install pip install --upgrade pip
 
-# Copy shell scripts as needed so that a simple change to one of those
-# scripts does not cause this image and all derived images from being
-# completely rebuilt. This can save significant build time, especially for
-# the HPC images.
-ARG SCRIPT_DIR=/tmp/dockerfile_scripts
-RUN mkdir -p ${SCRIPT_DIR}
-
-COPY dockerfile_scripts/install_deb_packages.sh ${SCRIPT_DIR}
-RUN ${SCRIPT_DIR}/install_deb_packages.sh
-RUN pip install --upgrade pip
-
-COPY dockerfile_scripts ${SCRIPT_DIR}
+COPY dockerfile_scripts /tmp/det_dockerfile_scripts
 
 ENV PATH="/opt/conda/envs/py_3.8/bin:${PATH}"
 
@@ -29,7 +55,7 @@ ENV PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 PYTHONHASHSEED=0
 
 # Install fixed version of FFI package for Ubuntu 20.04.
 # This is done after above stuff to make sure we get right version.
-RUN ${SCRIPT_DIR}/install_package_fixes.sh
+RUN /tmp/det_dockerfile_scripts/install_package_fixes.sh
 
 RUN apt install rocm-libs 
 
@@ -43,7 +69,7 @@ ARG MPICH_INSTALL_DIR=/container/mpich
 ARG OFI_INSTALL_DIR=/container/ofi
 ARG OMPI_WITH_CUDA=0
 ARG OMPI_WITH_ROCM=1
-RUN if [ "$WITH_MPI" = "1" ]; then ${SCRIPT_DIR}/ompi_rocm.sh "$UBUNTU_VERSION" "$WITH_OFI" "$OMPI_WITH_ROCM" "$WITH_MPICH"; fi
+RUN if [ "$WITH_MPI" = "1" ]; then /tmp/det_dockerfile_scripts/ompi_rocm.sh "$UBUNTU_VERSION" "$WITH_OFI" "$OMPI_WITH_ROCM" "$WITH_MPICH"; fi
 
 # Make sure OMPI/UCX show up in the right paths
 ARG VERBS_LIB_DIR=/usr/lib/libibverbs
@@ -87,14 +113,14 @@ RUN pip install google-auth-oauthlib
 
 
 
-RUN pip install -r ${SCRIPT_DIR}/notebook-requirements.txt && jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
+RUN pip install -r /tmp/det_dockerfile_scripts/notebook-requirements.txt && jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 ENV JUPYTER_CONFIG_DIR=/run/determined/jupyter/config
 ENV JUPYTER_DATA_DIR=/run/determined/jupyter/data
 ENV JUPYTER_RUNTIME_DIR=/run/determined/jupyter/runtime
 
-RUN ${SCRIPT_DIR}/add_det_nobody_user.sh
-RUN ${SCRIPT_DIR}/install_libnss_determined.sh
-RUN ${SCRIPT_DIR}/install_google_cloud_sdk.sh
+RUN /tmp/det_dockerfile_scripts/add_det_nobody_user.sh
+RUN /tmp/det_dockerfile_scripts/install_libnss_determined.sh
+RUN /tmp/det_dockerfile_scripts/install_google_cloud_sdk.sh
 
 # google-api-python-client -> google-api-core -> googleapis-common-protos -> protobuf
 # Horovod cannot build with protobuf > 3.20.x
@@ -140,7 +166,7 @@ ENV LD_LIBRARY_PATH=${WITH_OFI:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
 RUN if [ "$HOROVOD_PIP" != "0" ]; then pip install "${HOROVOD_PIP}" ; fi
 
 RUN pip uninstall -y tb-nightly tensorboardX
-RUN pip install -r ${SCRIPT_DIR}/additional-requirements-rocm.txt
+RUN pip install -r /tmp/det_dockerfile_scripts/additional-requirements-rocm.txt
 
 
 ENV HSA_FORCE_FINE_GRAIN_PCIE=1
@@ -151,7 +177,7 @@ ARG INTERNAL_AWS_DS
 ARG INTERNAL_AWS_PATH
 ARG ROCM_DIR=/opt/rocm
 ENV ROCM_DIR $ROCM_DIR
-RUN if [ "$WITH_OFI" = "1" ]; then ${SCRIPT_DIR}/build_aws_rocm.sh "$WITH_OFI" "$WITH_AWS_TRACE" "$WITH_MPICH"; fi
+RUN if [ "$WITH_OFI" = "1" ]; then /tmp/det_dockerfile_scripts/build_aws_rocm.sh "$WITH_OFI" "$WITH_AWS_TRACE" "$WITH_MPICH"; fi
 ENV LD_LIBRARY_PATH=${WITH_OFI:+$AWS_PLUGIN_INSTALL_DIR:}$LD_LIBRARY_PATH
 RUN ldconfig
 
@@ -162,7 +188,7 @@ ENV PATH=$OMPI_PATH_DIR:$OFI_INSTALL_DIR:$PATH
 # run the user command. This is intended to enable performant execution
 # on non-IB systems that have a proprietary libfabric.
 
-RUN mkdir -p /container/bin && cp ${SCRIPT_DIR}/scrape_libs.sh /container/bin
+RUN mkdir -p /container/bin && cp /tmp/det_dockerfile_scripts/scrape_libs.sh /container/bin
 
 ARG WITH_RCCL=1
 ENV WITH_RCCL=$WITH_RCCL
