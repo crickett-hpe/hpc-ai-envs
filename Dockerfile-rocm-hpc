@@ -1,0 +1,209 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+ARG SCRIPT_DIR=/tmp/dockerfile_scripts
+RUN mkdir -p ${SCRIPT_DIR}
+
+# Remove the ompi/ucx, etc that is in the base image
+# Seems that the torch installed in the NGC image links against this.
+# Wonder if that will cause problems? We can have it use our OMPI but it
+# also wants libucs, etc, from UCX. The NGC container must be building
+# torch from source and enabling torch distributed with mpi backend.
+#RUN rm -rf /opt/hpcx /usr/local/mpi
+RUN apt remove -y openmpi ucx || true
+
+# Put all HPC related tools we build under /container/hpc so we can
+# have a shared include, lib, bin, etc to simplify our paths and build steps.
+ARG HPC_DIR=/container/hpc
+RUN mkdir -p ${HPC_DIR}/bin && \
+    mkdir -p ${HPC_DIR}/lib && \
+    mkdir -p ${HPC_DIR}/include && \
+    mkdir -p ${HPC_DIR}/share && \
+    ln -s ${HPC_DIR}/lib ${HPC_DIR}/lib64 && \
+    chmod -R go+rX ${HPC_DIR}
+ENV LD_LIBRARY_PATH=$HPC_DIR/lib:$LD_LIBRARY_PATH
+ENV PATH=$HPC_DIR/bin:$PATH
+
+# Setup some default env variables. This is for the end user as well
+# as tools we will build since we put include files under HPC_DIR.
+COPY dockerfile_scripts/setup_sh_env.sh ${SCRIPT_DIR}
+RUN ${SCRIPT_DIR}/setup_sh_env.sh
+
+# We run this here even though it might be a repeat from the base image
+# to make sure we have the required bits for building NCCL, libcxi, etc.
+COPY dockerfile_scripts/install_deb_packages.sh ${SCRIPT_DIR}
+RUN ${SCRIPT_DIR}/install_deb_packages.sh
+
+# Should we just use /container as the install dir and put
+# everything (ie, ucx/ofi/ompi/mpich) under /container/{bin|lib}
+# to clean up these arguments?
+# Install Cray CXI headers/lib
+COPY dockerfile_scripts/cray-libs.sh ${SCRIPT_DIR}
+ARG WITH_OFI
+RUN if [ "$WITH_OFI" = "1" ]; then \
+    ${SCRIPT_DIR}/cray-libs.sh ; \
+    fi
+
+ENV PATH="/opt/conda/envs/py_3.8/bin:${PATH}"
+
+ARG CONDA="${PATH}"
+
+ENV PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 PYTHONHASHSEED=0
+
+# Install fixed version of FFI package for Ubuntu 20.04.
+# This is done after above stuff to make sure we get right version.
+COPY dockerfile_scripts/install_package_fixes.sh ${SCRIPT_DIR}
+RUN ${SCRIPT_DIR}/install_package_fixes.sh
+
+RUN apt install rocm-libs 
+
+#USING OFI
+ARG WITH_MPI=1
+ARG WITH_OFI=1
+ARG WITH_MPICH
+ARG UCX_INSTALL_DIR=/container/ucx
+ARG OMPI_INSTALL_DIR=/container/ompi
+ARG MPICH_INSTALL_DIR=/container/mpich
+ARG OFI_INSTALL_DIR=/container/ofi
+ARG OMPI_WITH_CUDA=0
+ARG OMPI_WITH_ROCM=1
+COPY dockerfile_scripts/ompi_rocm.sh ${SCRIPT_DIR}
+RUN if [ "$WITH_MPI" = "1" ]; then ${SCRIPT_DIR}/ompi_rocm.sh "$UBUNTU_VERSION" "$WITH_OFI" "$OMPI_WITH_ROCM" "$WITH_MPICH"; fi
+
+# Make sure OMPI/UCX show up in the right paths
+ARG VERBS_LIB_DIR=/usr/lib/libibverbs
+ARG UCX_LIB_DIR=${UCX_INSTALL_DIR}/lib:${UCX_INSTALL_DIR}/lib64
+ARG UCX_PATH_DIR=${UCX_INSTALL_DIR}/bin
+ARG OFI_LIB_DIR=${OFI_INSTALL_DIR}/lib:${OFI_INSTALL_DIR}/lib64
+ARG OFI_PATH_DIR=${OFI_INSTALL_DIR}/bin
+ARG OMPI_LIB_DIR=${OMPI_INSTALL_DIR}/lib
+ARG OMPI_PATH_DIR=${OMPI_INSTALL_DIR}/bin
+ARG MPICH_LIB_DIR=${MPICH_INSTALL_DIR}/lib
+ARG MPICH_PATH_DIR=${MPICH_INSTALL_DIR}/bin
+
+# Set up UCX_LIBS and OFI_LIBS
+ENV UCX_LIBS="${VERBS_LIB_DIR}:${UCX_LIB_DIR}:${OMPI_LIB_DIR}:"
+ENV OFI_LIBS="${VERBS_LIB_DIR}:${OFI_LIB_DIR}:${MPICH_LIB_DIR}:"
+
+# If WITH_OFI is true, then set EXTRA_LIBS to OFI libs, else set to empty string
+ENV EXTRA_LIBS="${WITH_OFI:+${OFI_LIBS}}"
+
+# If EXTRA_LIBS is empty, set to UCX libs, else leave as OFI libs
+ENV EXTRA_LIBS="${EXTRA_LIBS:-${UCX_LIBS}}"
+
+# But, only add them if WITH_MPI
+ENV LD_LIBRARY_PATH=${WITH_MPI:+$EXTRA_LIBS}$LD_LIBRARY_PATH
+
+#USING OFI
+ENV PATH=${WITH_OFI:+$PATH:${WITH_MPI:+$OFI_PATH_DIR:$MPICH_PATH_DIR}}
+
+#USING UCX
+ENV PATH=${PATH:-$CONDA:${WITH_MPI:+$UCX_PATH_DIR:$OMPI_PATH_DIR}}
+
+# Enable running OMPI as root
+ENV OMPI_ALLOW_RUN_AS_ROOT ${WITH_MPI:+1}
+ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM ${WITH_MPI:+1}
+
+# google-api-python-client -> google-api-core -> googleapis-common-protos -> protobuf
+# Horovod cannot build with protobuf > 3.20.x
+# latest google-api-python-client requires protobuf >= 3.20.1
+
+ARG TENSORFLOW_PIP
+RUN if [ "$TENSORFLOW_PIP" ]; then pip install $TENSORFLOW_PIP; fi
+
+ARG TORCH_TB_PROFILER_PIP
+RUN if [ "$TORCH_TB_PROFILER_PIP" ]; then pip install $TORCH_TB_PROFILER_PIP; fi
+
+ARG TF_PROFILER_PIP
+RUN if [ "$TF_PROFILER_PIP" ]; then python -m pip install $TF_PROFILER_PIP; fi
+
+# Reset these because we set GPU_OPERATIONS later.
+ENV HOROVOD_GPU_BROADCAST=
+ENV HOROVOD_GPU_ALLREDUCE=
+
+ARG HOROVOD_PIP
+ARG HOROVOD_NCCL_HOME=/opt/rocm/rccl
+ARG HOROVOD_WITH_TENSORFLOW=1
+ARG HOROVOD_WITH_PYTORCH=1
+ARG HOROVOD_WITHOUT_MXNET=1
+ARG HOROVOD_GPU_OPERATIONS=NCCL
+ARG HOROVOD_WITHOUT_MPI=0
+ARG HOROVOD_WITH_MPI=1
+ARG HOROVOD_GPU=ROCM
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib:/opt/rocm/hip/lib
+
+ENV HOROVOD_PIP $HOROVOD_PIP
+ENV HOROVOD_WITH_TENSORFLOW $HOROVOD_WITH_TENSORFLOW
+ENV HOROVOD_WITH_PYTORCH $HOROVOD_WITH_PYTORCH
+ENV HOROVOD_WITHOUT_MXNET $HOROVOD_WITHOUT_MXNET
+ENV HOROVOD_GPU_OPERATIONS $HOROVOD_GPU_OPERATIONS
+ENV HOROVOD_WITHOUT_MPI $HOROVOD_WITHOUT_MPI
+ENV HOROVOD_WITH_MPI $HOROVOD_WITH_MPI
+ENV HOROVOD_GPU $HOROVOD_GPU
+ENV HOROVOD_NCCL_HOME $HOROVOD_NCCL_HOME
+ENV NCCL_LIB_DIR=${HOROVOD_NCCL_HOME}/lib
+ENV HOROVOD_NCCL_LINK=${WITH_OFI:+SHARED}
+ENV LD_LIBRARY_PATH=${WITH_OFI:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
+
+###RUN if [ "$HOROVOD_PIP" != "0" ]; then pip install "${HOROVOD_PIP}" ; fi
+
+RUN pip uninstall -y tb-nightly tensorboardX
+COPY dockerfile_scripts/additional-requirements-rocm.txt ${SCRIPT_DIR}
+RUN pip install -r ${SCRIPT_DIR}/additional-requirements-rocm.txt
+
+
+ENV HSA_FORCE_FINE_GRAIN_PCIE=1
+
+ARG AWS_PLUGIN_INSTALL_DIR=/container/aws
+ARG WITH_AWS_TRACE
+ARG INTERNAL_AWS_DS
+ARG INTERNAL_AWS_PATH
+ARG ROCM_DIR=/opt/rocm
+ENV ROCM_DIR $ROCM_DIR
+COPY dockerfile_scripts/build_aws_rocm.sh ${SCRIPT_DIR}
+RUN if [ "$WITH_OFI" = "1" ]; then ${SCRIPT_DIR}/build_aws_rocm.sh "$WITH_OFI" "$WITH_AWS_TRACE" "$WITH_MPICH"; fi
+ENV LD_LIBRARY_PATH=${WITH_OFI:+$AWS_PLUGIN_INSTALL_DIR:}$LD_LIBRARY_PATH
+RUN ldconfig
+
+ENV PATH=$OMPI_PATH_DIR:$OFI_INSTALL_DIR:$PATH
+
+ARG WITH_RCCL=1
+ENV WITH_RCCL=$WITH_RCCL
+ARG WITH_NFS_WORKAROUND=1
+ENV WITH_NFS_WORKAROUND=$WITH_NFS_WORKAROUND
+
+ARG DEEPSPEED_PIP
+ENV DEEPSPEED_PIP=$DEEPSPEED_PIP
+ENV DEEPDEEP=1
+
+ARG BASE_IMAGE
+
+###RUN if [ "$HOROVOD_PIP" != "0" ]; then if [ ! `echo "$BASE_IMAGE"|grep  rocm6.0` ] ; then pip install "${HOROVOD_PIP}" ; fi ; fi;
+#### Try installing Horovod
+###ARG WITH_PT
+###ARG WITH_TF
+###COPY dockerfile_scripts/build_horovod.sh ${SCRIPT_DIR}
+###RUN if [ "$WITH_MPI" = "1" ] ; then \
+###    ${SCRIPT_DIR}/build_horovod.sh "$WITH_PT" "$WITH_TF"; \
+###    fi
+
+###RUN if [ -n "$DEEPSPEED_PIP" ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y pdsh libaio-dev&& git clone https://github.com/ROCmSoftwarePlatform/triton.git && cd triton && git checkout triton-mlir && cd python && pip3 install ninja cmake && pip install -e .;fi
+###RUN if [ -n "$DEEPSPEED_PIP" ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y pdsh libaio-dev&& python -m pip install  pydantic==1.10.11 && git clone https://github.com/ROCmSoftwarePlatform/DeepSpeed.git && cd DeepSpeed && python3 setup.py  build && python3 setup.py install && python -m deepspeed.env_report; fi
+###RUN if [ -n "$DEEPSPEED_PIP" ]; then python -m deepspeed.env_report ; fi
+
+#MIOPEN_DEBUG_SAVE_TEMP_DIR is required to prevent 
+# PAD-133
+ENV MIOPEN_DEBUG_SAVE_TEMP_DIR=1
+
+# Set an entrypoint that can scrape up the host libfabric.so and then
+# run the user command. This is intended to enable performant execution
+# on non-IB systems that have a proprietary libfabric.
+COPY dockerfile_scripts/scrape_libs.sh ${SCRIPT_DIR}
+RUN mkdir -p /container/bin && \
+    cp ${SCRIPT_DIR}/scrape_libs.sh /container/bin
+ENTRYPOINT ["/container/bin/scrape_libs.sh"]
+
+CMD ["/bin/bash"]
+USER root
+
+RUN rm -r /tmp/*
