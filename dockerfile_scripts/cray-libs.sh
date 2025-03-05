@@ -2,6 +2,7 @@
 
 set -x
 
+
 # The NGC base image from 24.11 and newer seems to include a build of
 # libfabric and the AWS plugin. We need to remove it to prevent issues
 # that could occur if that version is loaded instead of the libfabric/ofi
@@ -61,7 +62,7 @@ if [ -n $CUDA_VERSION ] ; then
 #    cuda_opt=" --with-cuda=${CUDA_DIR} "
     cuda_rocm_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str --enable-cuda-dlopen"
 fi
-if [ -n $ROCM_DIR ] ; then
+if [ -d /opt/rocm ] ; then
     cuda_rocm_opt=" --with-rocr=/opt/rocm"
     echo "Using ROCM support"
 else
