@@ -160,8 +160,8 @@ ARG INTERNAL_AWS_DS
 ARG INTERNAL_AWS_PATH
 ARG ROCM_DIR=/opt/rocm
 ENV ROCM_DIR $ROCM_DIR
-COPY dockerfile_scripts/build_aws_rocm.sh ${SCRIPT_DIR}
-RUN if [ "$WITH_OFI" = "1" ]; then ${SCRIPT_DIR}/build_aws_rocm.sh "$WITH_OFI" "$WITH_AWS_TRACE" "$WITH_MPICH"; fi
+COPY dockerfile_scripts/build_aws.sh ${SCRIPT_DIR}
+RUN if [ "$WITH_OFI" = "1" ]; then ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_AWS_TRACE" "$WITH_MPICH"; fi
 ENV LD_LIBRARY_PATH=${WITH_OFI:+$AWS_PLUGIN_INSTALL_DIR:}$LD_LIBRARY_PATH
 RUN ldconfig
 
