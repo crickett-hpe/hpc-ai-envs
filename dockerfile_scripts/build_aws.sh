@@ -34,25 +34,42 @@ GDRCOPY_HOME="/usr"
 # Cuda path, including version. This should be sufficient for the build
 CUDA_DIR=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
 
-AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR} \
-	  --with-libfabric=${HPC_DIR}            \
-	  --with-mpi=${HPC_DIR}                 \
-	  --with-cuda=${CUDA_DIR} ${WITH_AWS_TRACE}"
 AWS_SRC_DIR=/tmp/aws-ofi-nccl
-AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/archive/refs/tags"
-AWS_URL="${AWS_BASE_URL}/${AWS_VER}.tar.gz"
-AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/releases/download"
-AWS_NAME="${AWS_NAME}-${AWS_VER_NUM}-aws"
-AWS_URL="${AWS_BASE_URL}/${AWS_VER}-aws/${AWS_NAME}.tar.gz"
+mkdir -p ${AWS_SRC_DIR}
+cd ${AWS_SRC_DIR}
 
-mkdir -p ${AWS_SRC_DIR}                           && \
-    cd ${AWS_SRC_DIR}                             && \
-    wget ${AWS_URL}                               && \
-    tar -xzf ${AWS_NAME}.tar.gz --no-same-owner   && \
-    cd ${AWS_NAME}                                && \
-    ./autogen.sh                                  && \
-    ./configure ${AWS_CONFIG_OPTIONS}             && \
-    make                                          && \
-    make install                                  && \
-    cd /tmp                                       && \
-    rm -rf ${AWS_SRC_DIR}
+if [ ! -d /opt/rocm ]
+then
+    echo "Building AWS for NVidia"
+    AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
+      --with-libfabric=${HPC_DIR}            \
+      --with-mpi=${HPC_DIR}                  \
+      --with-cuda=${CUDA_DIR} ${WITH_AWS_TRACE}"
+
+    AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/archive/refs/tags"
+    AWS_URL="${AWS_BASE_URL}/${AWS_VER}.tar.gz"
+    AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/releases/download"
+    AWS_NAME="${AWS_NAME}-${AWS_VER_NUM}-aws"
+    AWS_URL="${AWS_BASE_URL}/${AWS_VER}-aws/${AWS_NAME}.tar.gz"
+    wget ${AWS_URL}
+    tar -xzf ${AWS_NAME}.tar.gz --no-same-owner
+    cd ${AWS_NAME}
+else
+    echo "Building AWS for AMD"
+    AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
+      --with-libfabric=${HPC_DIR}            \
+      --with-rccl=${HOROVOD_NCCL_HOME}       \
+      --with-mpi=${HPC_DIR}                  \
+      --with-hip=${ROCM_DIR} ${WITH_AWS_TRACE}"
+    git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
+    cd aws-ofi-rccl
+    export CC=hipcc
+    export CFLAGS="-D__HIP_PLATFORM_AMD__"
+fi
+
+./autogen.sh                                  && \
+./configure ${AWS_CONFIG_OPTIONS}             && \
+make                                          && \
+make install                                  && \
+cd /tmp                                       && \
+rm -rf ${AWS_SRC_DIR}
