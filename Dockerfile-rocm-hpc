@@ -11,6 +11,9 @@ RUN mkdir -p ${SCRIPT_DIR}
 # torch from source and enabling torch distributed with mpi backend.
 #RUN rm -rf /opt/hpcx /usr/local/mpi
 RUN apt remove -y openmpi ucx || true
+#Let's remove existing /opt/ompi; and, link to our version.
+RUN rm -rf /opt/ompi
+RUN ln -s /container/hpc /opt/ompi
 
 # Put all HPC related tools we build under /container/hpc so we can
 # have a shared include, lib, bin, etc to simplify our paths and build steps.
@@ -62,9 +65,9 @@ ARG WITH_MPI=1
 ARG WITH_OFI=1
 ARG WITH_MPICH
 ARG UCX_INSTALL_DIR=/container/ucx
-ARG OMPI_INSTALL_DIR=/container/ompi
+ARG OMPI_INSTALL_DIR=/container/hpc
 ARG MPICH_INSTALL_DIR=/container/mpich
-ARG OFI_INSTALL_DIR=/container/ofi
+ARG OFI_INSTALL_DIR=/container/hpc
 ARG OMPI_WITH_CUDA=0
 ARG OMPI_WITH_ROCM=1
 COPY dockerfile_scripts/ompi_rocm.sh ${SCRIPT_DIR}
@@ -154,7 +157,7 @@ RUN pip install -r ${SCRIPT_DIR}/additional-requirements-rocm.txt
 
 ENV HSA_FORCE_FINE_GRAIN_PCIE=1
 
-ARG AWS_PLUGIN_INSTALL_DIR=/container/aws
+ARG AWS_PLUGIN_INSTALL_DIR=/container/hpc
 ARG WITH_AWS_TRACE
 ARG INTERNAL_AWS_DS
 ARG INTERNAL_AWS_PATH
