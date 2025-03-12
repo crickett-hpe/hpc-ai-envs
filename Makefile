@@ -114,6 +114,14 @@ ifneq ($(USER_NGC_BASE_IMAGE),)
         USER_NGC_IMAGE_SS=$(USER_NGC_IMAGE_REPO)/$(USER_NGC_IMAGE_NAME)-hpc-ss:$(USER_NGC_IMAGE_VER)
         USER_NGC_IMAGE_SIF=$(shell echo "$(USER_NGC_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-',g)
 endif
+ifneq ($(USER_ROCM_BASE_IMAGE),)
+        USER_ROCM_IMAGE_REPO=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | awk 'BEGIN{FS=OFS="/"}{NF--; print}')
+        USER_ROCM_IMAGE_NAME=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$1}')
+        USER_ROCM_IMAGE_VER=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$NF}')
+        USER_ROCM_IMAGE_HPC=$(USER_ROCM_IMAGE_REPO)/$(USER_ROCM_IMAGE_NAME)-hpc:$(USER_ROCM_IMAGE_VER)
+        USER_ROCM_IMAGE_SS=$(USER_ROCM_IMAGE_REPO)/$(USER_ROCM_IMAGE_NAME)-hpc-ss:$(USER_ROCM_IMAGE_VER)
+        USER_ROCM_IMAGE_SIF=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-',g)
+endif
 
 
 NGC_PYTORCH_PREFIX := nvcr.io/nvidia/pytorch
@@ -201,7 +209,7 @@ build-user-spec-ngc:
 	@echo "USER_NGC_IMAGE_HPC: $(USER_NGC_IMAGE_HPC)"
 	@echo "USER_NGC_IMAGE_SS: $(USER_NGC_IMAGE_SS)"
 	@echo "USER_NGC_IMAGE_SIF: $(USER_NGC_IMAGE_SIF)"
-	docker build -f Dockerfile-ngc-hpc \
+	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
@@ -211,7 +219,7 @@ build-user-spec-ngc:
 		-t $(USER_NGC_IMAGE_HPC)\
 		.
 ifneq ($(HPC_LIBS_DIR),)
-	docker build -f Dockerfile-ss \
+	docker build -f Dockerfile-ss $(BUILD_OPTS) \
 		--build-arg BASE_IMAGE=$(USER_NGC_IMAGE_HPC) \
 		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
 		-t $(USER_NGC_IMAGE_SS) \
@@ -369,6 +377,32 @@ ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)"
 	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)" \
                           TARGET_NAME="$(ROCM_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
+endif
+
+# Build an HPC container using the base image provided by the user.
+# This enables us to append the SS11 bits to an otherwise working
+# user image to make it easier for users to deploy their containers on SS11.
+.PHONY: build-user-spec-rocm
+build-user-spec-rocm:
+	@echo "USER_ROCM_BASE_IMAGE: $(USER_ROCM_BASE_IMAGE)"
+	@echo "USER_ROCM_IMAGE_REPO: $(USER_ROCM_IMAGE_REPO)"
+	@echo "USER_ROCM_IMAGE_NAME: $(USER_ROCM_IMAGE_NAME)"
+	@echo "USER_ROCM_IMAGE_VER: $(USER_ROCM_IMAGE_VER)"
+	@echo "USER_ROCM_IMAGE_HPC: $(USER_ROCM_IMAGE_HPC)"
+	@echo "USER_ROCM_IMAGE_SS: $(USER_ROCM_IMAGE_SS)"
+	@echo "USER_ROCM_IMAGE_SIF: $(USER_ROCM_IMAGE_SIF)"
+	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
+		--build-arg "$(NCCL_BUILD_ARG)" \
+		--build-arg "$(MPI_BUILD_ARG)" \
+		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "WITH_PT=1" \
+		--build-arg "WITH_TF=0" \
+		--build-arg BASE_IMAGE="$(USER_ROCM_BASE_IMAGE)" \
+		-t $(USER_ROCM_IMAGE_HPC)\
+		.
+ifeq "$(BUILD_SIF)" "1"
+	    @echo "BUILD_SIF: $(USER_ROCM_IMAGE_HPC)"
+	    make build-sif TARGET_TAG="$(USER_ROCM_IMAGE_HPC)" TARGET_NAME="$(USER_ROCM_IMAGE_SIF)"
 endif
 
 

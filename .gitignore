@@ -3,3 +3,6 @@
 
 # Ignore temporary files
 *.tmp
+
+# Ignore sif files
+*.sif
