@@ -2,20 +2,28 @@
 
 set -x
 
-cuda_opt=""
-if [ -n $CUDA_VERSION ] ; then
-    cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
-    ARCH_TYPE=`uname -m`
-    if [ $ARCH_TYPE == "x86_64" ]; then
-	CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/x86_64-linux"
-    elif [ $ARCH_TYPE == "aarch64" ]; then
-	CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
+GPU_OPT=""
+if [ ! -d /opt/rocm ]
+then
+    cuda_opt=""
+    if [ -n $CUDA_VERSION ] ; then
+        cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
+        ARCH_TYPE=`uname -m`
+        if [ $ARCH_TYPE == "x86_64" ]; then
+            CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/x86_64-linux"
+        elif [ $ARCH_TYPE == "aarch64" ]; then
+            CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
+        fi
+        cuda_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
+        GPU_OPT="${cuda_opt}"
     fi
-#    cuda_opt=" --with-cuda=${CUDA_DIR} "
-    cuda_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
+else
+    GPU_OPT="--with-rocm"
 fi
 
-OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR} --without-ucx --with-pmix=internal --with-cuda=${cuda_opt}"
+OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default \
+   --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR}         \
+   --without-ucx --with-pmix=internal ${GPU_OPT}"
 
 # Install OMPI
 OMPI_VER=v5.0
