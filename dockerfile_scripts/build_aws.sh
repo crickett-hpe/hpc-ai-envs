@@ -65,6 +65,21 @@ else
     cd aws-ofi-rccl
     export CC=hipcc
     export CFLAGS="-D__HIP_PLATFORM_AMD__"
+    ###
+    ### The following magic addresses https://github.com/ROCm/aws-ofi-rccl/pull/14
+    ### until such time that the aws-ofi-rccl repo is updated.
+    ###
+    sed -i '39i\
+/* Copied from libfabric:rdma/fabric.h@30ec628: "libfabric: Initial commit" */\
+#ifndef container_of\
+#define container_of(ptr, type, field) ((type *) ((char *)ptr - offsetof(type, field)))\
+#endif\
+/* end of copied libfabric macros */\
+'   include/nccl_ofi.h
+    head -50 include/nccl_ofi.h
+    ###
+    ###  End of magic
+    ###
 fi
 
 ./autogen.sh                                  && \
