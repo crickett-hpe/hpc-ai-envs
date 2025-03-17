@@ -70,8 +70,8 @@ ARG MPICH_INSTALL_DIR=/container/mpich
 ARG OFI_INSTALL_DIR=/container/hpc
 ARG OMPI_WITH_CUDA=0
 ARG OMPI_WITH_ROCM=1
-COPY dockerfile_scripts/ompi_rocm.sh ${SCRIPT_DIR}
-RUN if [ "$WITH_MPI" = "1" ]; then ${SCRIPT_DIR}/ompi_rocm.sh "$UBUNTU_VERSION" "$WITH_OFI" "$OMPI_WITH_ROCM" "$WITH_MPICH"; fi
+COPY dockerfile_scripts/ompi.sh ${SCRIPT_DIR}
+RUN if [ "$WITH_MPI" = "1" ]; then ${SCRIPT_DIR}/ompi.sh "$UBUNTU_VERSION" "$WITH_OFI" "$OMPI_WITH_ROCM" "$WITH_MPICH"; fi
 
 # Make sure OMPI/UCX show up in the right paths
 ARG VERBS_LIB_DIR=/usr/lib/libibverbs
