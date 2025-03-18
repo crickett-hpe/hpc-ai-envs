@@ -32,7 +32,8 @@ GDRCOPY_HOME="/usr"
 #     CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
 # fi
 # Cuda path, including version. This should be sufficient for the build
-CUDA_DIR=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
+#CUDA_DIR=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
+CUDA_DIR=" --with-cuda=/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/cuda/12.6 "
 
 AWS_SRC_DIR=/tmp/aws-ofi-nccl
 mkdir -p ${AWS_SRC_DIR}

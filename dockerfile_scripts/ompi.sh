@@ -14,7 +14,8 @@ then
         elif [ $ARCH_TYPE == "aarch64" ]; then
             CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
         fi
-        cuda_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
+#        cuda_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
+        cuda_opt=" --with-cuda=/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/cuda/12.6"
         GPU_OPT="${cuda_opt}"
     fi
 else
@@ -23,7 +24,8 @@ fi
 
 OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default \
    --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR}         \
-   --without-ucx --with-pmix=internal ${GPU_OPT}"
+   --without-ucx --with-pmix=internal ${GPU_OPT}                             \
+   --with-cuda-libdir=/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/cuda/12.6/lib64/stubs"
 
 # Install OMPI
 OMPI_VER=v5.0

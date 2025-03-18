@@ -60,7 +60,8 @@ if [ -n $CUDA_VERSION ] ; then
 	CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
     fi
 #    cuda_opt=" --with-cuda=${CUDA_DIR} "
-    cuda_rocm_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str --enable-cuda-dlopen"
+#    cuda_rocm_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str --enable-cuda-dlopen"
+     cuda_rocm_opt=" --with-cuda=/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/cuda/12.6 --enable-cuda-dlopen"
 fi
 if [ -d /opt/rocm ] ; then
     cuda_rocm_opt=" --with-rocr=/opt/rocm"
