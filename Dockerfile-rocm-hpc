@@ -47,7 +47,7 @@ RUN if [ "$WITH_OFI" = "1" ]; then \
     ${SCRIPT_DIR}/cray-libs.sh ; \
     fi
 
-ENV PATH="/opt/conda/envs/py_3.8/bin:${PATH}"
+ENV PATH="/opt/conda/envs/py_3.10/bin:${PATH}"
 
 ARG CONDA="${PATH}"
 
