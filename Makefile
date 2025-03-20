@@ -353,18 +353,15 @@ ROCM_PYTORCH_VERSION := 24.11-py3
 ROCM_PYTORCH_REPO := rocm-$(ROCM_PYTORCH_VERSION)-pt
 ROCM_PYTORCH_HPC_REPO := rocm-$(ROCM_PYTORCH_VERSION)-pt-hpc
 
-#rocm/pytorch:rocm6.3.4_ubuntu24.04_py3.12_pytorch_release_2.4.0
-#rocm/pytorch:rocm6.3_ubuntu22.04_py3.10_pytorch_release_2.4.0
-#rocm/pytorch:rocm6.0.2_ubuntu22.04_py3.10_pytorch_2.1.2
-#rocm/pytorch:rocm5.7_ubuntu22.04_py3.10_pytorch_2.0.1
-
+# From https://hub.docker.com/r/rocm/pytorch/tags
+# rocm/pytorch:rocm6.3_ubuntu22.04_py3.10_pytorch_release_2.4.0
 ROCM_PT_PREFIX  := rocm/pytorch
-ROCM_VERSION    := 6.3
-ROCM_UBUNTU     := 22.04
+ROCM_VERSION    := rocm6.3
+ROCM_UBUNTU     := ubuntu22.04
 PYTHON_VERSION  := py3.10
 ROCM_PT_RELEASE := pytorch_release_2.4.0
-ROCM_PT_VERSION := rocm$(ROCM_VERSION)_ubuntu$(ROCM_UBUNTU)_$(PYTHON_VERSION)_$(ROCM_PT_RELEASE)
-ROCM_PYTORCH_HPC_REPO := rocm$(ROCM_VERSION)-$(PYTHON_VERSION)-pt-hpc
+ROCM_PT_VERSION := $(ROCM_VERSION)_$(ROCM_UBUNTU)_$(PYTHON_VERSION)_$(ROCM_PT_RELEASE)
+ROCM_PYTORCH_HPC_REPO := $(ROCM_VERSION)-$(PYTHON_VERSION)-pt-hpc
 
 export ROCM63_TORCH_TF_ENVIRONMENT_NAME := $(ROCM_60_PREFIX)$(ROCM63_TORCH_MPI)
 .PHONY: build-pytorch-rocm63
