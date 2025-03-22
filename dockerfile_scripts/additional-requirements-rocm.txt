@@ -10,4 +10,3 @@ Pillow>=8.3.2,<=9.5.0
 analytics-python
 nvidia-ml-py
 protobuf<=3.20.3
-pynvml 
