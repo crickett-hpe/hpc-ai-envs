@@ -357,7 +357,6 @@ export ROCM63_TORCH_TF_ENVIRONMENT_NAME := $(ROCM_60_PREFIX)$(ROCM63_TORCH_MPI)
 build-pytorch-rocm:
 	docker build -f Dockerfile-pytorch-rocm $(BUILD_OPTS) \
 		--build-arg BASE_IMAGE="rocm/pytorch:rocm6.3_ubuntu22.04_py3.10_pytorch_release_2.4.0" \
-		--build-arg WITH_MPICH=$(WITH_MPICH) \
 		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH) \
 		-t $(DOCKERHUB_REGISTRY)/$(ROCM63_TORCH_TF_ENVIRONMENT_NAME)-$(VERSION) \
 		.
