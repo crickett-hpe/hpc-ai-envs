@@ -27,6 +27,7 @@ BUILD_OPTS ?=
 WITH_MPI ?= 1
 WITH_OFI ?= 1
 WITH_SS11 ?= 0
+WITH_HOROVOD ?= 0
 CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
 
@@ -166,6 +167,7 @@ build-pytorch-ngc:
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
+		--build-arg "WITH_HOROVOD=$(WITH_HOROVOD)" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		.

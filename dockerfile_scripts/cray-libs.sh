@@ -72,7 +72,7 @@ fi
 # Build and install libfabric. Note that this should see the cxi bits
 # and enable cxi support. It should also install into ${HPC_DIR} so that
 # it is easier for ompi/aws to find it.
-cray_ofi_config_opts="--prefix=${HPC_DIR} --with-cassini-headers=${HPC_DIR} --with-cxi-uapi-headers=${HPC_DIR} --enable-cxi=${HPC_DIR} $cuda_rocm_opt --enable-gdrcopy-dlopen --disable-sockets --disable-udp --disable-verbs --disable-mrail --disable-rxd --disable-shm --disable-usnic --disable-rstream --disable-efa --disable-psm2 --disable-psm3 --disable-opx"
+cray_ofi_config_opts="--prefix=${HPC_DIR} --with-cassini-headers=${HPC_DIR} --with-cxi-uapi-headers=${HPC_DIR} --enable-cxi=${HPC_DIR} $cuda_rocm_opt --enable-gdrcopy-dlopen --disable-verbs --disable-efa --enable-lnx --enable-shm"
 #ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0" 
 #ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0"
 ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi" 
