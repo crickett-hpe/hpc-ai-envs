@@ -80,7 +80,7 @@ RUN if [ "$WITH_OFI" = "1" ]; then \
 ARG WITH_PT
 ARG WITH_TF
 COPY dockerfile_scripts/build_horovod.sh ${SCRIPT_DIR}
-RUN if [ "$WITH_MPI" = "1" ] ; then \
+RUN if [ "$WITH_HOROVOD" = "1" ] ; then \
     ${SCRIPT_DIR}/build_horovod.sh "$WITH_PT" "$WITH_TF"; \
     fi
 
