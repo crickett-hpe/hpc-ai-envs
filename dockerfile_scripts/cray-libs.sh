@@ -61,7 +61,8 @@ if [ -n $CUDA_VERSION ] ; then
     fi
 #    cuda_opt=" --with-cuda=${CUDA_DIR} "
 #    cuda_rocm_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str --enable-cuda-dlopen"
-     cuda_rocm_opt=" --with-cuda=/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/cuda/12.6 --enable-cuda-dlopen"
+#     cuda_rocm_opt=" --with-cuda=/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/cuda/12.6 --enable-cuda-dlopen"
+     cuda_rocm_opt=" --with-cuda=/opt/nvidia/hpc_sdk/Linux_aarch64/25.1/cuda/12.6 --enable-cuda-dlopen"
 fi
 if [ -d /opt/rocm ] ; then
     cuda_rocm_opt=" --with-rocr=/opt/rocm"
@@ -76,7 +77,7 @@ fi
 cray_ofi_config_opts="--prefix=${HPC_DIR} --with-cassini-headers=${HPC_DIR} --with-cxi-uapi-headers=${HPC_DIR} --enable-cxi=${HPC_DIR} $cuda_rocm_opt --enable-gdrcopy-dlopen --disable-verbs --disable-efa --enable-lnx --enable-shm"
 #ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0" 
 #ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0"
-ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi" 
+ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi"
 ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi"
 cd $cray_src_dir && \
     git clone https://github.com/ofiwg/libfabric.git && \
