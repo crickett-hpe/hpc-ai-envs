@@ -35,10 +35,11 @@ GDRCOPY_HOME="/usr"
 CUDA_DIR=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
 
 AWS_SRC_DIR=/tmp/aws-ofi-nccl
+ROCM_DIR=/opt/rocm
 mkdir -p ${AWS_SRC_DIR}
 cd ${AWS_SRC_DIR}
 
-if [ ! -d /opt/rocm ]
+if [ ! -d ${ROCM_DIR} ]
 then
     echo "Building AWS for NVidia"
     AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
@@ -58,9 +59,9 @@ else
     echo "Building AWS for AMD"
     AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
       --with-libfabric=${HPC_DIR}            \
-      --with-rccl=${HOROVOD_NCCL_HOME}       \
+      --with-rccl=${ROCM_DIR}/rccl           \
       --with-mpi=${HPC_DIR}                  \
-      --with-hip=${ROCM_DIR} ${WITH_AWS_TRACE}"
+      --with-hip=${ROCM_DIR}   ${WITH_AWS_TRACE}"
     git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
     cd aws-ofi-rccl
     export CC=hipcc

@@ -368,7 +368,6 @@ ROCM_PYTORCH_HPC_REPO := $(ROCM_VERSION)-$(PYTHON_VERSION)-pt-hpc
 build-pytorch-rocm:
 	docker build -f Dockerfile-pytorch-rocm $(BUILD_OPTS) \
 		--build-arg BASE_IMAGE=$(ROCM_PT_PREFIX):$(ROCM_PT_VERSION) \
-		--build-arg WITH_MPICH=$(WITH_MPICH) \
 		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH) \
 		.
 	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
