@@ -70,8 +70,8 @@ ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=${WITH_MPI:+1}
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib:/opt/rocm/hip/lib
 
 RUN pip uninstall -y tb-nightly tensorboardX
-COPY dockerfile_scripts/additional-requirements-rocm.txt ${SCRIPT_DIR}
-RUN pip install -r ${SCRIPT_DIR}/additional-requirements-rocm.txt
+COPY dockerfile_scripts/additional-requirements.txt ${SCRIPT_DIR}
+RUN pip install -r ${SCRIPT_DIR}/additional-requirements.txt
 
 
 ENV HSA_FORCE_FINE_GRAIN_PCIE=1

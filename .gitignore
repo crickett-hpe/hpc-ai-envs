@@ -6,3 +6,7 @@
 
 # Ignore sif files
 *.sif
+
+# Ignore tar files
+*.tar
+
