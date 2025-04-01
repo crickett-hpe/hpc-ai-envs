@@ -47,8 +47,6 @@ RUN if [ "$WITH_OFI" = "1" ]; then \
     ${SCRIPT_DIR}/cray-libs.sh ; \
     fi
 
-RUN apt install rocm-libs 
-
 #USING OFI
 ARG WITH_MPI=1
 ARG WITH_OFI=1
