@@ -10,12 +10,14 @@ CPU_PREFIX_310 := $(REGISTRY_REPO):py-3.10-
 ROCM_56_PREFIX := $(REGISTRY_REPO):rocm-5.6-
 ROCM_57_PREFIX := $(REGISTRY_REPO):rocm-5.7-
 ROCM_60_PREFIX := $(REGISTRY_REPO):rocm-6.0-
+ROCM_63_PREFIX := $(REGISTRY_REPO):rocm-6.3-
 
 CPU_SUFFIX := -cpu
 CUDA_SUFFIX := -cuda
 PLATFORM_LINUX_ARM_64 := linux/arm64
 PLATFORM_LINUX_AMD_64 := linux/amd64
 HOROVOD_GPU_OPERATIONS := NCCL
+BUILD_OPTS ?=
 
 # Default to enabling MPI, OFI and SS11. Note that if we cannot
 # find the SS11 libs automatically and the user did not provide
@@ -25,6 +27,7 @@ HOROVOD_GPU_OPERATIONS := NCCL
 WITH_MPI ?= 1
 WITH_OFI ?= 1
 WITH_SS11 ?= 0
+WITH_HOROVOD ?= 0
 CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
 
@@ -112,6 +115,14 @@ ifneq ($(USER_NGC_BASE_IMAGE),)
         USER_NGC_IMAGE_SS=$(USER_NGC_IMAGE_REPO)/$(USER_NGC_IMAGE_NAME)-hpc-ss:$(USER_NGC_IMAGE_VER)
         USER_NGC_IMAGE_SIF=$(shell echo "$(USER_NGC_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-',g)
 endif
+ifneq ($(USER_ROCM_BASE_IMAGE),)
+        USER_ROCM_IMAGE_REPO=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | awk 'BEGIN{FS=OFS="/"}{NF--; print}')
+        USER_ROCM_IMAGE_NAME=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$1}')
+        USER_ROCM_IMAGE_VER=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$NF}')
+        USER_ROCM_IMAGE_HPC=$(USER_ROCM_IMAGE_REPO)/$(USER_ROCM_IMAGE_NAME)-hpc:$(USER_ROCM_IMAGE_VER)
+        USER_ROCM_IMAGE_SS=$(USER_ROCM_IMAGE_REPO)/$(USER_ROCM_IMAGE_NAME)-hpc-ss:$(USER_ROCM_IMAGE_VER)
+        USER_ROCM_IMAGE_SIF=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-',g)
+endif
 
 
 NGC_PYTORCH_PREFIX := nvcr.io/nvidia/pytorch
@@ -146,16 +157,17 @@ build-sif:
 # build hpc together since hpc is dependent on the normal build
 .PHONY: build-pytorch-ngc
 build-pytorch-ngc:
-	docker build -f Dockerfile-pytorch-ngc \
+	docker build -f Dockerfile-pytorch-ngc $(BUILD_OPTS) \
 		--build-arg BASE_IMAGE="$(NGC_PYTORCH_PREFIX):$(NGC_PYTORCH_VERSION)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH) \
 		.
-	docker build -f Dockerfile-ngc-hpc \
+	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
+		--build-arg "WITH_HOROVOD=$(WITH_HOROVOD)" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		.
@@ -165,7 +177,7 @@ build-pytorch-ngc:
 	@echo "LIBCXI_DIR: $(LIBCXI_DIR)"
 ifneq ($(HPC_LIBS_DIR),)
 	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
-	docker build -f Dockerfile-ss \
+	docker build -f Dockerfile-ss $(BUILD_OPTS) \
 		--build-arg BASE_IMAGE=$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH) \
@@ -199,7 +211,7 @@ build-user-spec-ngc:
 	@echo "USER_NGC_IMAGE_HPC: $(USER_NGC_IMAGE_HPC)"
 	@echo "USER_NGC_IMAGE_SS: $(USER_NGC_IMAGE_SS)"
 	@echo "USER_NGC_IMAGE_SIF: $(USER_NGC_IMAGE_SIF)"
-	docker build -f Dockerfile-ngc-hpc \
+	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
@@ -209,7 +221,7 @@ build-user-spec-ngc:
 		-t $(USER_NGC_IMAGE_HPC)\
 		.
 ifneq ($(HPC_LIBS_DIR),)
-	docker build -f Dockerfile-ss \
+	docker build -f Dockerfile-ss $(BUILD_OPTS) \
 		--build-arg BASE_IMAGE=$(USER_NGC_IMAGE_HPC) \
 		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
 		-t $(USER_NGC_IMAGE_SS) \
@@ -334,6 +346,66 @@ build-pytorch20-tf210-rocm60:
 		-t $(DOCKERHUB_REGISTRY)/$(ROCM60_TORCH_TF_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
 		-t $(DOCKERHUB_REGISTRY)/$(ROCM60_TORCH_TF_ENVIRONMENT_NAME)-$(VERSION) \
 		.
+ifeq ($(WITH_MPICH),1)
+ROCM63_TORCH_MPI :=pytorch-2.4-tf-2.10-rocm-mpich
+else
+ROCM63_TORCH_MPI :=pytorch-2.4-tf-2.10-rocm-ompi
+endif
+ROCM_PYTORCH_VERSION := 24.11-py3
+ROCM_PYTORCH_REPO := rocm-$(ROCM_PYTORCH_VERSION)-pt
+ROCM_PYTORCH_HPC_REPO := rocm-$(ROCM_PYTORCH_VERSION)-pt-hpc
+export ROCM63_TORCH_TF_ENVIRONMENT_NAME := $(ROCM_60_PREFIX)$(ROCM63_TORCH_MPI)
+.PHONY: build-pytorch-rocm63
+build-pytorch-rocm:
+	docker build -f Dockerfile-pytorch-rocm $(BUILD_OPTS) \
+		--build-arg BASE_IMAGE="rocm/pytorch:rocm6.3_ubuntu22.04_py3.10_pytorch_release_2.4.0" \
+		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH) \
+		-t $(DOCKERHUB_REGISTRY)/$(ROCM63_TORCH_TF_ENVIRONMENT_NAME)-$(VERSION) \
+		.
+	@echo "ROCM63_TORCH_TF_ENVIRONMENT_NAME: $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH)"
+	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
+		--build-arg TENSORFLOW_PIP="tensorflow-rocm==2.10.1.540" \
+		--build-arg HOROVOD_PIP="horovod==0.28.1" \
+		--build-arg "$(NCCL_BUILD_ARG)" \
+		--build-arg "$(MPI_BUILD_ARG)" \
+		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "WITH_PT=1" \
+		--build-arg "WITH_TF=0" \
+		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
+		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
+		.
+ifeq "$(BUILD_SIF)" "1"
+	    @echo "BUILD_SIF: $(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)"
+	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)" \
+                          TARGET_NAME="$(ROCM_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
+endif
+
+# Build an HPC container using the base image provided by the user.
+# This enables us to append the SS11 bits to an otherwise working
+# user image to make it easier for users to deploy their containers on SS11.
+.PHONY: build-user-spec-rocm
+build-user-spec-rocm:
+	@echo "USER_ROCM_BASE_IMAGE: $(USER_ROCM_BASE_IMAGE)"
+	@echo "USER_ROCM_IMAGE_REPO: $(USER_ROCM_IMAGE_REPO)"
+	@echo "USER_ROCM_IMAGE_NAME: $(USER_ROCM_IMAGE_NAME)"
+	@echo "USER_ROCM_IMAGE_VER: $(USER_ROCM_IMAGE_VER)"
+	@echo "USER_ROCM_IMAGE_HPC: $(USER_ROCM_IMAGE_HPC)"
+	@echo "USER_ROCM_IMAGE_SS: $(USER_ROCM_IMAGE_SS)"
+	@echo "USER_ROCM_IMAGE_SIF: $(USER_ROCM_IMAGE_SIF)"
+	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
+		--build-arg "$(NCCL_BUILD_ARG)" \
+		--build-arg "$(MPI_BUILD_ARG)" \
+		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "WITH_PT=1" \
+		--build-arg "WITH_TF=0" \
+		--build-arg BASE_IMAGE="$(USER_ROCM_BASE_IMAGE)" \
+		-t $(USER_ROCM_IMAGE_HPC)\
+		.
+ifeq "$(BUILD_SIF)" "1"
+	    @echo "BUILD_SIF: $(USER_ROCM_IMAGE_HPC)"
+	    make build-sif TARGET_TAG="$(USER_ROCM_IMAGE_HPC)" TARGET_NAME="$(USER_ROCM_IMAGE_SIF)"
+endif
+
 
 DEEPSPEED_VERSION := 0.8.3
 export TORCH_TB_PROFILER_PIP := torch-tb-profiler==0.4.1

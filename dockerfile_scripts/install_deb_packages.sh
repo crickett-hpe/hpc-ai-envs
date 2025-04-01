@@ -2,6 +2,7 @@
 
 mkdir -p /var/run/sshd
 
+# ROCM Dockerfile has glibc-source here, commenting out until deemed necessary
 apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     autoconf \
@@ -10,6 +11,7 @@ apt-get update \
     build-essential \
     ca-certificates \
     curl \
+    libcurl4-openssl-dev \
     daemontools \
     debhelper \
     devscripts \

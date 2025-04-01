@@ -49,26 +49,65 @@ AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}             \
 # When this flag was left default with 'yes' it seems to cause
 # seg-fault on internal A100 sytem (pinoak)
 ARCH_TYPE=`uname -m`
-if [ $ARCH_TYPE == "x86_64" ]; then
-    AWS_CONFIG_OPTIONS="$AWS_CONFIG_OPTIONS \
-	    ac_cv_have_decl_FI_MR_DMABUF=no"
+if [ ! -d /opt/rocm ]; then
+    if [ $ARCH_TYPE == "x86_64" ]; then
+        AWS_CONFIG_OPTIONS="$AWS_CONFIG_OPTIONS \
+	        ac_cv_have_decl_FI_MR_DMABUF=no"
+    fi
 fi
 
 AWS_SRC_DIR=/tmp/aws-ofi-nccl
-AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/archive/refs/tags"
-AWS_URL="${AWS_BASE_URL}/${AWS_VER}.tar.gz"
-AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/releases/download"
-AWS_NAME="${AWS_NAME}-${AWS_VER_NUM}-aws"
-AWS_URL="${AWS_BASE_URL}/${AWS_VER}-aws/${AWS_NAME}.tar.gz"
+ROCM_DIR=/opt/rocm
+mkdir -p ${AWS_SRC_DIR}
+cd ${AWS_SRC_DIR}
 
-mkdir -p ${AWS_SRC_DIR}                           && \
-    cd ${AWS_SRC_DIR}                             && \
-    wget ${AWS_URL}                               && \
-    tar -xzf ${AWS_NAME}.tar.gz --no-same-owner   && \
-    cd ${AWS_NAME}                                && \
-    ./autogen.sh                                  && \
-    ./configure ${AWS_CONFIG_OPTIONS}             && \
-    make                                          && \
-    make install                                  && \
-    cd /tmp                                       && \
-    rm -rf ${AWS_SRC_DIR}
+if [ ! -d ${ROCM_DIR} ]
+then
+    echo "Building AWS for NVidia"
+    AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
+      --with-libfabric=${HPC_DIR}            \
+      --with-mpi=${HPC_DIR}                  \
+      --with-cuda=${CUDA_DIR} ${WITH_AWS_TRACE}"
+
+    AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/archive/refs/tags"
+    AWS_URL="${AWS_BASE_URL}/${AWS_VER}.tar.gz"
+    AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/releases/download"
+    AWS_NAME="${AWS_NAME}-${AWS_VER_NUM}-aws"
+    AWS_URL="${AWS_BASE_URL}/${AWS_VER}-aws/${AWS_NAME}.tar.gz"
+    wget ${AWS_URL}
+    tar -xzf ${AWS_NAME}.tar.gz --no-same-owner
+    cd ${AWS_NAME}
+else
+    echo "Building AWS for AMD"
+    AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
+      --with-libfabric=${HPC_DIR}            \
+      --with-rccl=${ROCM_DIR}/rccl           \
+      --with-mpi=${HPC_DIR}                  \
+      --with-hip=${ROCM_DIR}   ${WITH_AWS_TRACE}"
+    git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
+    cd aws-ofi-rccl
+    export CC=hipcc
+    export CFLAGS="-D__HIP_PLATFORM_AMD__"
+    ###
+    ### The following magic addresses https://github.com/ROCm/aws-ofi-rccl/pull/14
+    ### until such time that the aws-ofi-rccl repo is updated.
+    ###
+    sed -i '39i\
+/* Copied from libfabric:rdma/fabric.h@30ec628: "libfabric: Initial commit" */\
+#ifndef container_of\
+#define container_of(ptr, type, field) ((type *) ((char *)ptr - offsetof(type, field)))\
+#endif\
+/* end of copied libfabric macros */\
+'   include/nccl_ofi.h
+    head -50 include/nccl_ofi.h
+    ###
+    ###  End of magic
+    ###
+fi
+
+./autogen.sh                                  && \
+./configure ${AWS_CONFIG_OPTIONS}             && \
+make                                          && \
+make install                                  && \
+cd /tmp                                       && \
+rm -rf ${AWS_SRC_DIR}

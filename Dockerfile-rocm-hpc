@@ -10,6 +10,10 @@ RUN mkdir -p ${SCRIPT_DIR}
 # also wants libucs, etc, from UCX. The NGC container must be building
 # torch from source and enabling torch distributed with mpi backend.
 #RUN rm -rf /opt/hpcx /usr/local/mpi
+RUN apt remove -y openmpi ucx || true
+#Let's remove existing /opt/ompi; and, link to our version.
+RUN rm -rf /opt/ompi
+RUN ln -s /container/hpc /opt/ompi
 
 # Put all HPC related tools we build under /container/hpc so we can
 # have a shared include, lib, bin, etc to simplify our paths and build steps.
@@ -33,16 +37,6 @@ RUN ${SCRIPT_DIR}/setup_sh_env.sh
 COPY dockerfile_scripts/install_deb_packages.sh ${SCRIPT_DIR}
 RUN ${SCRIPT_DIR}/install_deb_packages.sh
 
-ARG WITH_NCCL
-# If we override NCCL we need to set these env vars for Horovod so that
-# it links against the right one later on when we build it.
-ENV HOROVOD_NCCL_HOME=${WITH_NCCL:+$HPC_DIR}
-ENV HOROVOD_NCCL_LINK=${WITH_NCCL:+SHARED}
-COPY dockerfile_scripts/build_nccl.sh ${SCRIPT_DIR}
-RUN if [ -n "${WITH_NCCL}" ]; then ${SCRIPT_DIR}/build_nccl.sh; fi
-ENV NCCL_LIB_DIR=${HOROVOD_NCCL_HOME}/lib
-ENV LD_LIBRARY_PATH=${WITH_NCCL:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
-
 # Should we just use /container as the install dir and put
 # everything (ie, ucx/ofi/ompi/mpich) under /container/{bin|lib}
 # to clean up these arguments?
@@ -53,42 +47,47 @@ RUN if [ "$WITH_OFI" = "1" ]; then \
     ${SCRIPT_DIR}/cray-libs.sh ; \
     fi
 
-# Install all HPC related tools under /container (e.g., mpi, ofi, etc).
-ARG WITH_MPI
-ARG MPI_TYPE
-ARG OMPI_WITH_CUDA=1
+RUN apt install rocm-libs 
+
+#USING OFI
+ARG WITH_MPI=1
+ARG WITH_OFI=1
+ARG OMPI_WITH_CUDA=0
+ARG OMPI_WITH_ROCM=1
 COPY dockerfile_scripts/ompi.sh ${SCRIPT_DIR}
-RUN if [ "$WITH_MPI" = "1" ]; then \
-    ${SCRIPT_DIR}/ompi.sh "$UBUNTU_VERSION" \
-		 "$WITH_OFI" "$OMPI_WITH_CUDA"; \
-    fi
+RUN if [ "$WITH_MPI" = "1" ]; then ${SCRIPT_DIR}/ompi.sh "$UBUNTU_VERSION" "$WITH_OFI" "$OMPI_WITH_ROCM"; fi
 
-# Enable running OMPI as root. Note that we only need this if we use OMPI. 
-ENV OMPI_ALLOW_RUN_AS_ROOT ${WITH_MPI:+1}
-ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM ${WITH_MPI:+1}
-# Need to override this so we don't try using the OMPI built into the
-# base container, which is not built correctly for libfabric
-ENV OPAL_PREFIX=${WITH_MPI:+$HPC_DIR}
+# But, only add them if WITH_MPI
+ENV LD_LIBRARY_PATH=/container/hpc/lib:$LD_LIBRARY_PATH
 
+#USING OFI
+ENV PATH=/container/hpc/bin:$PATH
+
+# Enable running OMPI as root
+ENV OMPI_ALLOW_RUN_AS_ROOT=${WITH_MPI:+1}
+ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=${WITH_MPI:+1}
+
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib:/opt/rocm/hip/lib
+
+RUN pip uninstall -y tb-nightly tensorboardX
+COPY dockerfile_scripts/additional-requirements.txt ${SCRIPT_DIR}
+RUN pip install -r ${SCRIPT_DIR}/additional-requirements.txt
+
+
+ENV HSA_FORCE_FINE_GRAIN_PCIE=1
+
+ARG AWS_PLUGIN_INSTALL_DIR=/container/hpc
 ARG WITH_AWS_TRACE
 COPY dockerfile_scripts/build_aws.sh ${SCRIPT_DIR}
-RUN if [ "$WITH_OFI" = "1" ]; then \
-    ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_AWS_TRACE"; \
-    fi
+RUN if [ "$WITH_OFI" = "1" ]; then ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_AWS_TRACE"; fi
+RUN ldconfig
 
-# Try installing Horovod
-ARG WITH_PT
-ARG WITH_TF
-COPY dockerfile_scripts/build_horovod.sh ${SCRIPT_DIR}
-RUN if [ "$WITH_HOROVOD" = "1" ] ; then \
-    ${SCRIPT_DIR}/build_horovod.sh "$WITH_PT" "$WITH_TF"; \
-    fi
+ARG WITH_NFS_WORKAROUND=1
+ENV WITH_NFS_WORKAROUND=$WITH_NFS_WORKAROUND
 
-# If we built MPI, override any MPI in /usr/local/mpi that might
-# have been installed by NVIDIA targeting IB.
-RUN if [ "$WITH_MPI" = "1" ] ; then \
-    rm -rf /usr/local/mpi && ln -s /container/hpc /usr/local/mpi; \
-fi
+#MIOPEN_DEBUG_SAVE_TEMP_DIR is required to prevent 
+# PAD-133
+ENV MIOPEN_DEBUG_SAVE_TEMP_DIR=1
 
 # Set an entrypoint that can scrape up the host libfabric.so and then
 # run the user command. This is intended to enable performant execution
@@ -97,5 +96,8 @@ COPY dockerfile_scripts/scrape_libs.sh ${SCRIPT_DIR}
 RUN mkdir -p /container/bin && \
     cp ${SCRIPT_DIR}/scrape_libs.sh /container/bin
 ENTRYPOINT ["/container/bin/scrape_libs.sh"]
+
+CMD ["/bin/bash"]
+USER root
 
 RUN rm -r /tmp/*

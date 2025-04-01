@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Make sure we have pip. Some base images, such as for HPL, will not.
+if ! command -v pip &> /dev/null; then
+    echo "Skipping Horovod install because pip not installed"
+    exit 0;
+fi
+
 # Try and build a version of Horovod that works with c++-17, which is
 # required by the latest PyTorch
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH

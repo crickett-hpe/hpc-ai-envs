@@ -110,6 +110,10 @@ export NCCL_CROSS_NIC=${NCCL_CROSS_NIC:=0}
 export NCCL_NET_GDR_LEVEL=${NCCL_NET_GDR_LEVEL:=PHB}
 export FI_HMEM_CUDA_USE_GDRCOPY=${FI_HMEM_CUDA_USE_GDRCOPY:=1}
 
+# This seems required for newer NGC base images to avoid issues related to
+# the OMPI that was installed in the base and replaced with our OMPI.
+export OMPI_MCA_pml=${OMPI_MCA_pml:="^ucx"}
+
 # Check if the driver in the container is newer than the one on the host.
 # If this happens there can be bugs, such as incorrect answers due to
 # invalid messages, due to a race condition at container startup. Some

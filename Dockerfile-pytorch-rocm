@@ -1,0 +1,31 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+RUN apt remove -y openmpi ucx || true
+#Let's remove existing /opt/ompi; and, link to our version.
+RUN rm -rf /opt/ompi                && \
+    ln -s /container/hpc /opt/ompi  && \
+    rm /etc/apt/sources.list.d/rocm.list
+
+# Copy shell scripts as needed so that a simple change to one of those
+# scripts does not cause this image and all derived images from being
+# completely rebuilt. This can save significant build time, especially for
+# the HPC images.
+ARG SCRIPT_DIR=/tmp/dockerfile_scripts
+RUN mkdir -p ${SCRIPT_DIR}
+
+COPY dockerfile_scripts/install_deb_packages.sh ${SCRIPT_DIR}
+RUN ${SCRIPT_DIR}/install_deb_packages.sh
+RUN pip install --upgrade pip
+
+COPY dockerfile_scripts/additional-requirements-torch.txt ${SCRIPT_DIR}
+COPY dockerfile_scripts/additional-requirements.txt ${SCRIPT_DIR}
+RUN python -m pip install  \
+    -r ${SCRIPT_DIR}/additional-requirements-torch.txt \
+    -r ${SCRIPT_DIR}/additional-requirements.txt
+
+ENV DEEPSPEED_PIP="deepspeed==0.16.1"
+COPY dockerfile_scripts/install_deepspeed.sh ${SCRIPT_DIR}
+RUN ${SCRIPT_DIR}/install_deepspeed.sh
+
+RUN rm -r /tmp/*

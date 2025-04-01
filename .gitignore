@@ -1,0 +1,12 @@
+# Ignore log files
+*.log
+
+# Ignore temporary files
+*.tmp
+
+# Ignore sif files
+*.sif
+
+# Ignore tar files
+*.tar
+

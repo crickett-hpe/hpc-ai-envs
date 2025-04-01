@@ -2,6 +2,7 @@
 
 set -x
 
+
 # The NGC base image from 24.11 and newer seems to include a build of
 # libfabric and the AWS plugin. We need to remove it to prevent issues
 # that could occur if that version is loaded instead of the libfabric/ofi
@@ -59,13 +60,19 @@ if [ -n $CUDA_VERSION ] ; then
 	CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
     fi
 #    cuda_opt=" --with-cuda=${CUDA_DIR} "
-    cuda_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
+    cuda_rocm_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str --enable-cuda-dlopen"
+fi
+if [ -d /opt/rocm ] ; then
+    cuda_rocm_opt=" --with-rocr=/opt/rocm"
+    echo "Using ROCM support"
+else
+    echo "Skipping ROCM support"
 fi
 
 # Build and install libfabric. Note that this should see the cxi bits
 # and enable cxi support. It should also install into ${HPC_DIR} so that
 # it is easier for ompi/aws to find it.
-cray_ofi_config_opts="--prefix=${HPC_DIR} --with-cassini-headers=${HPC_DIR} --with-cxi-uapi-headers=${HPC_DIR} --enable-cxi=${HPC_DIR} $cuda_opt --enable-cuda-dlopen --enable-gdrcopy-dlopen --disable-sockets --disable-udp --disable-verbs --disable-mrail --disable-rxd --disable-shm --disable-usnic --disable-rstream --disable-efa --disable-psm2 --disable-psm3 --disable-opx"
+cray_ofi_config_opts="--prefix=${HPC_DIR} --with-cassini-headers=${HPC_DIR} --with-cxi-uapi-headers=${HPC_DIR} --enable-cxi=${HPC_DIR} $cuda_rocm_opt --enable-gdrcopy-dlopen --disable-verbs --disable-efa --enable-lnx --enable-shm"
 #ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0" 
 #ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0"
 ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi" 
