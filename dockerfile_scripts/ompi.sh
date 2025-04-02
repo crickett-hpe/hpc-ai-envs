@@ -15,7 +15,7 @@ then
             CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
         fi
         cuda_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
-        GPU_OPT="${cuda_opt}"
+        GPU_OPT="${cuda_opt} --with-cuda-libdir=/usr/local/cuda-$cuda_ver_str/lib64/stubs"
     fi
 else
     GPU_OPT="--with-rocm"
