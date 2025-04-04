@@ -351,21 +351,26 @@ ROCM63_TORCH_MPI :=pytorch-2.4-tf-2.10-rocm-mpich
 else
 ROCM63_TORCH_MPI :=pytorch-2.4-tf-2.10-rocm-ompi
 endif
-ROCM_PYTORCH_VERSION := 24.11-py3
-ROCM_PYTORCH_REPO := rocm-$(ROCM_PYTORCH_VERSION)-pt
-ROCM_PYTORCH_HPC_REPO := rocm-$(ROCM_PYTORCH_VERSION)-pt-hpc
-export ROCM63_TORCH_TF_ENVIRONMENT_NAME := $(ROCM_60_PREFIX)$(ROCM63_TORCH_MPI)
-.PHONY: build-pytorch-rocm63
+
+# From https://hub.docker.com/r/rocm/pytorch/tags
+# rocm/pytorch:rocm6.3.4_ubuntu22.04_py3.10_pytorch_release_2.4.0
+
+ROCM_PT_PREFIX  := rocm/pytorch
+ROCM_VERSION    := rocm6.3.4
+ROCM_UBUNTU     := ubuntu22.04
+PYTHON_VERSION  := py3.10
+ROCM_PT_RELEASE := pytorch_release_2.4.0
+ROCM_PT_VERSION := $(ROCM_VERSION)_$(ROCM_UBUNTU)_$(PYTHON_VERSION)_$(ROCM_PT_RELEASE)
+ROCM_PYTORCH_REPO := $(ROCM_VERSION)-$(PYTHON_VERSION)-pt
+ROCM_PYTORCH_HPC_REPO := $(ROCM_VERSION)-$(PYTHON_VERSION)-pt-hpc
+
+.PHONY: build-pytorch-rocm
 build-pytorch-rocm:
 	docker build -f Dockerfile-pytorch-rocm $(BUILD_OPTS) \
-		--build-arg BASE_IMAGE="rocm/pytorch:rocm6.3_ubuntu22.04_py3.10_pytorch_release_2.4.0" \
+		--build-arg BASE_IMAGE=$(ROCM_PT_PREFIX):$(ROCM_PT_VERSION) \
 		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM63_TORCH_TF_ENVIRONMENT_NAME)-$(VERSION) \
 		.
-	@echo "ROCM63_TORCH_TF_ENVIRONMENT_NAME: $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH)"
 	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
-		--build-arg TENSORFLOW_PIP="tensorflow-rocm==2.10.1.540" \
-		--build-arg HOROVOD_PIP="horovod==0.28.1" \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
