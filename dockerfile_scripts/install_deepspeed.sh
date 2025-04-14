@@ -4,11 +4,28 @@ set -e
 
 apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y pdsh libaio-dev
 
+# Starting from the 25.03 release, the PyTorch container has implemented a
+# pip constraints file at /etc/pip/constraint.txt. This file specifies the
+# versions of all python packages used during the PyTorch container creation,
+# and is included to prevent unintentional overwriting of any of the
+# project's dependencies. To install a different version of one of the
+# packages constrained here, the file /etc/pip/constraint.txt within the
+# container must be modified. Simply remove the version constraints for any
+# packages that you want to overwrite, keeping in mind that any other
+# versions than those specified in the constraint file have not been fully
+# tested in the container.
+CONSTRAINT_FILE="/etc/pip/constraint.txt"
+if [ -e $CONSTRAINT_FILE ]; then
+    sed -i '/^dill/d' $CONSTRAINT_FILE
+    sed -i '/^fsspec/d' $CONSTRAINT_FILE
+fi
+
 #Older versions of deepspeed require pinned pydantic version
 python -m pip install pydantic
 
 # Install some dependencies for the LLM test
-pip install accelerate arrow datasets huggingface-hub packaging safetensors setuptools tokenizers transformers xxhash evaluate
+pip install 'datasets>=3.5.0'
+pip install accelerate arrow huggingface-hub packaging safetensors setuptools tokenizers transformers xxhash evaluate
 #Precompile deepspeed ops except sparse_attn which has dubious support
 # Skip precompiling since this fails when using the NGC base image.
 # Need to verify that DS can use NCCL correctly for the comms, etc.

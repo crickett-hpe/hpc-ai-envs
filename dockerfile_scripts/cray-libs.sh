@@ -54,13 +54,12 @@ cuda_opt=""
 if [ -n $CUDA_VERSION ] ; then
     cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
     ARCH_TYPE=`uname -m`
-    if [ $ARCH_TYPE == "x86_64" ]; then
-	CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/x86_64-linux"
-    elif [ $ARCH_TYPE == "aarch64" ]; then
-	CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
+    CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
+    if [[ ! -e $CUDA_DIR && -e /opt/nvidia/hpc_sdk ]]; then
+        CUDA_DIR="/opt/nvidia/hpc_sdk/Linux_${ARCH_TYPE}/${HPCSDK_VERSION}/cuda"
     fi
-#    cuda_opt=" --with-cuda=${CUDA_DIR} "
-    cuda_rocm_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str --enable-cuda-dlopen"
+
+    cuda_rocm_opt=" --with-cuda=${CUDA_DIR} --enable-cuda-dlopen"
 fi
 if [ -d /opt/rocm ] ; then
     cuda_rocm_opt=" --with-rocr=/opt/rocm"
@@ -77,25 +76,24 @@ cray_ofi_config_opts="--prefix=${HPC_DIR} --with-cassini-headers=${HPC_DIR} --wi
 #ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0"
 ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi" 
 ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi"
-cd $cray_src_dir && \
-    git clone https://github.com/ofiwg/libfabric.git && \
-    cd libfabric && \
-    git checkout -b v2.0.x && \
-    ./autogen.sh && \
-    ./configure CFLAGS="${ofi_cflags}" CPPFLAGS="${ofi_cppflags}" \
-		$cray_ofi_config_opts && \
-    make && \
-    make install && \
-    cd ../
 
-#cd $cray_src_dir/shs-libfabric && \
-#    git checkout -b v2.0.x && \
-#    ./autogen.sh && \
-#    ./configure CFLAGS="${ofi_cflags}" CPPFLAGS="${ofi_cppflags}" \
-#		$cray_ofi_config_opts && \
-#    make && \
-#    make install && \
-#    cd ../
+LIBFABRIC_VERSION=2.1.0
+LIBFABRIC_BASE_URL="https://github.com/ofiwg/libfabric/releases/download"
+LIBFABRIC_NAME="libfabric-${LIBFABRIC_VERSION}"
+LIBFABRIC_URL="${LIBFABRIC_BASE_URL}/v${LIBFABRIC_VERSION}/${LIBFABRIC_NAME}.tar.bz2"
+
+cd $cray_src_dir                       && \
+    wget ${LIBFABRIC_URL}              && \
+    tar -jxf ${LIBFABRIC_NAME}.tar.bz2    \
+        --no-same-owner                && \
+    cd ${LIBFABRIC_NAME}               && \
+    ./autogen.sh                       && \
+    ./configure CFLAGS="${ofi_cflags}"    \
+        CPPFLAGS="${ofi_cppflags}"        \
+	$cray_ofi_config_opts          && \
+    make                               && \
+    make install                       && \
+    cd ../
 
 # Clean up our git repos used to build cxi/libfabric
 rm -rf $cray_src_dir

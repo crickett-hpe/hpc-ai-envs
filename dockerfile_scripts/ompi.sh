@@ -9,13 +9,14 @@ then
     if [ -n $CUDA_VERSION ] ; then
         cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
         ARCH_TYPE=`uname -m`
-        if [ $ARCH_TYPE == "x86_64" ]; then
-            CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/x86_64-linux"
-        elif [ $ARCH_TYPE == "aarch64" ]; then
-            CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
-        fi
-        cuda_opt=" --with-cuda=/usr/local/cuda-$cuda_ver_str "
-        GPU_OPT="${cuda_opt} --with-cuda-libdir=/usr/local/cuda-$cuda_ver_str/lib64/stubs"
+	CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
+
+	if [[ ! -e $CUDA_DIR && -e /opt/nvidia/hpc_sdk ]]; then
+	    CUDA_DIR="/opt/nvidia/hpc_sdk/Linux_${ARCH_TYPE}/${HPCSDK_VERSION}/cuda"
+	fi
+
+        cuda_opt=" --with-cuda=${CUDA_DIR} "
+        GPU_OPT="${cuda_opt} --with-cuda-libdir=${CUDA_DIR}/lib64/stubs"
     fi
 else
     GPU_OPT="--with-rocm"
