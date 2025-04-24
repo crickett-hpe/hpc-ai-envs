@@ -89,6 +89,12 @@ ENV WITH_NFS_WORKAROUND=$WITH_NFS_WORKAROUND
 # PAD-133
 ENV MIOPEN_DEBUG_SAVE_TEMP_DIR=1
 
+COPY dockerfile_scripts/build_tests.sh ${SCRIPT_DIR}
+RUN if [ "$WITH_MPI" = "1" ]; then \
+    ${SCRIPT_DIR}/build_tests.sh;  \
+    fi
+
+
 # Set an entrypoint that can scrape up the host libfabric.so and then
 # run the user command. This is intended to enable performant execution
 # on non-IB systems that have a proprietary libfabric.
