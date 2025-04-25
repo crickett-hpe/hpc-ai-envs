@@ -123,6 +123,7 @@ int main(int argc, char* argv[]) {
 
     // Am I the leader for my GPU group?
     int is_leader = (my_total_rank % ranks_per_gpu == 0);
+    int is_gpu_shared = 1; // default to false
 
     printf("[Rank %d] Total Ranks: %d, Detected GPUs: %d, Ranks/GPU: %d, "
            "My GPU Index: %d, Is Leader: %s\n",
@@ -149,8 +150,21 @@ int main(int argc, char* argv[]) {
     // The modulo operator could handle cases where ranks > GPUs, mapping back
     // to available GPUs. However, `my_gpu_index` already ensures it's within
     // [0, num_gpus_available - 1] because of the divisibility check earlier.
-    CUDACHECK(cudaSetDevice(my_gpu_index));
-    CUDACHECK(cudaStreamCreate(&stream));
+    struct cudaDeviceProp deviceProp;
+    CUDACHECK(cudaGetDeviceProperties(&deviceProp, my_gpu_index));
+    is_gpu_shared = (deviceProp.computeMode == cudaComputeModeDefault) ? 1 : 0;
+
+    printf("[Rank %d] My GPU Index: %d, Is Leader: %s GPU Shareable: %s\n",
+           my_total_rank,
+           my_gpu_index,
+           is_leader ? "Yes" : "No",
+           is_gpu_shared ? "Yes" : "No");
+    fflush(stdout);
+
+    if(is_leader || is_gpu_shared) {
+        CUDACHECK(cudaSetDevice(my_gpu_index));
+        CUDACHECK(cudaStreamCreate(&stream));
+    }
 
     // --- NCCL Setup (Leaders Only) ---
     ncclUniqueId nccl_id;
@@ -234,7 +248,9 @@ int main(int argc, char* argv[]) {
              NCCLCHECK(ncclCommDestroy(nccl_comm));
         }
     }
-    CUDACHECK(cudaStreamDestroy(stream));
+    if (is_leader || is_gpu_shared) {
+        CUDACHECK(cudaStreamDestroy(stream));
+    }
     MPICHECK(MPI_Comm_free(&local_comm));
 
     // Finalize MPI
