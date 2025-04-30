@@ -32,7 +32,14 @@ GDRCOPY_HOME="/usr"
 #     CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
 # fi
 # Cuda path, including version. This should be sufficient for the build
-CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
+if [ ! -d /opt/rocm ]
+then
+    CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
+    ARCH_TYPE=`uname -m`
+    if [[ ! -e $CUDA_DIR && -e /opt/nvidia/hpc_sdk ]]; then
+        CUDA_DIR="/opt/nvidia/hpc_sdk/Linux_${ARCH_TYPE}/${HPCSDK_VERSION}/cuda"
+    fi
+fi
 
 AWS_SRC_DIR=/tmp/aws-ofi-nccl
 ROCM_DIR=/opt/rocm
