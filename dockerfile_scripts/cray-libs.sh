@@ -42,7 +42,7 @@ cd $cray_src_dir/shs-cxi-driver && \
 cxi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi" 
 cxi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi"
 cd $cray_src_dir/shs-libcxi && \
-    git checkout -b release/shs-12.0 && \
+    git checkout -b release/shs-13.0 && \
     ./autogen.sh && \
     ./configure --prefix=${HPC_DIR} \
 		CFLAGS="${cxi_cflags}" CPPFLAGS="${cxi_cppflags}" && \

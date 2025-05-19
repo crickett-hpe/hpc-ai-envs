@@ -16,8 +16,8 @@ apt-get update \
 				      --no-install-recommends tcsh
 
 # Install AWS_OFI_NCCL
-AWS_VER=v1.13.1
-AWS_VER_NUM=1.13.1
+AWS_VER=v1.14.2
+AWS_VER_NUM=1.14.2
 AWS_NAME=aws-ofi-nccl
 AWS_FILE="${AWS_NAME}-${AWS_VER_NUM}"
 cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
@@ -72,8 +72,8 @@ then
     AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/archive/refs/tags"
     AWS_URL="${AWS_BASE_URL}/${AWS_VER}.tar.gz"
     AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/releases/download"
-    AWS_NAME="${AWS_NAME}-${AWS_VER_NUM}-aws"
-    AWS_URL="${AWS_BASE_URL}/${AWS_VER}-aws/${AWS_NAME}.tar.gz"
+    AWS_NAME="${AWS_NAME}-${AWS_VER_NUM}"
+    AWS_URL="${AWS_BASE_URL}/${AWS_VER}/${AWS_NAME}.tar.gz"
     wget ${AWS_URL}
     tar -xzf ${AWS_NAME}.tar.gz --no-same-owner
     cd ${AWS_NAME}
