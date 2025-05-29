@@ -52,7 +52,8 @@ then
     AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
       --with-libfabric=${HPC_DIR}            \
       --with-mpi=${HPC_DIR}                  \
-      --with-cuda=${CUDA_DIR} ${WITH_AWS_TRACE}"
+      --with-cuda=${CUDA_DIR} ${WITH_AWS_TRACE} \
+      --with-gdrcopy=${HPC_DIR}"
 
     # FI_MR_DMABUF:
     # This flag indicates that the memory region to registered is
@@ -63,11 +64,11 @@ then
     #
     # When this flag was left default with 'yes' it seems to cause
     # seg-fault on internal A100 sytem (pinoak)
-    ARCH_TYPE=`uname -m`
-    if [ $ARCH_TYPE == "x86_64" ]; then
-        AWS_CONFIG_OPTIONS="$AWS_CONFIG_OPTIONS \
-	    ac_cv_have_decl_FI_MR_DMABUF=no"
-    fi
+#    ARCH_TYPE=`uname -m`
+#    if [ $ARCH_TYPE == "x86_64" ]; then
+#        AWS_CONFIG_OPTIONS="$AWS_CONFIG_OPTIONS \
+#	    ac_cv_have_decl_FI_MR_DMABUF=no"
+#    fi
 
     AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/archive/refs/tags"
     AWS_URL="${AWS_BASE_URL}/${AWS_VER}.tar.gz"

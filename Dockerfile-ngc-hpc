@@ -48,6 +48,9 @@ ENV LD_LIBRARY_PATH=${WITH_NCCL:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
 # to clean up these arguments?
 # Install Cray CXI headers/lib
 COPY dockerfile_scripts/cray-libs.sh ${SCRIPT_DIR}
+COPY external_libs/include/* /container/hpc/include/
+COPY external_libs/lib64/* /container/hpc/lib/
+COPY external_libs/pkgconfig/* /usr/lib/pkgconfig/
 ARG WITH_OFI
 RUN if [ "$WITH_OFI" = "1" ]; then \
     ${SCRIPT_DIR}/cray-libs.sh ; \

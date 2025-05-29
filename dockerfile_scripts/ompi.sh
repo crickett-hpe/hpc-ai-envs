@@ -37,9 +37,14 @@ echo "--- ./ompi/mca/mtl/ofi/mtl_ofi_component.c.orig 2024-11-15 08:18:09.000000
           }
 " > ${SCRIPT_DIR}/mtl_ofi_component.patch
 
-OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default \
-   --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR}         \
-   --without-ucx --with-pmix=internal ${GPU_OPT}"
+#OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default \
+#   --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR}         \
+#   --without-ucx --with-pmix=internal ${GPU_OPT} --with-slingshot --with-cray-xpmem=yes --with-ofi=${HPC_DIR} --with-xpmem=/container/hpc "
+
+OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --with-cray-xpmem=yes --with-xpmem=${HPC_DIR} \
+    --without-ucx --with-ofi=${HPC_DIR} --with-slingshot --with-cuda=${CUDA_DIR} \
+    --with-cuda-libdir=${CUDA_DIR}/lib64/stubs --without-lsf --with-slurm \
+    --with-pmix=internal --enable-mca-no-build=btl-usnic"
 
 # Install OMPI
 OMPI_VER=v5.0
