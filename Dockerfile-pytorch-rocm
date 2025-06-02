@@ -11,7 +11,7 @@ RUN rm -rf /opt/ompi                && \
 # scripts does not cause this image and all derived images from being
 # completely rebuilt. This can save significant build time, especially for
 # the HPC images.
-ARG SCRIPT_DIR=/tmp/dockerfile_scripts
+ARG SCRIPT_DIR=/tmp/dockerfile_scripts/
 RUN mkdir -p ${SCRIPT_DIR}
 
 COPY dockerfile_scripts/install_deb_packages.sh ${SCRIPT_DIR}

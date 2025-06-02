@@ -1,7 +1,7 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-ARG SCRIPT_DIR=/tmp/dockerfile_scripts
+ARG SCRIPT_DIR=/tmp/dockerfile_scripts/
 RUN mkdir -p ${SCRIPT_DIR}
 
 # Remove the ompi/ucx, etc that is in the base image
