@@ -3,13 +3,14 @@
 set -x
 
 WITH_AWS_TRACE=""
-if [ $# -gt 1 ] ; then
-    if [ "$2" = "1" ] ; then
+if [ $# -gt 2 ] ; then
+    if [ "$3" = "1" ] ; then
 	# Tell AWS to build with trace messages enabled
 	WITH_AWS_TRACE="--enable-trace"
     fi
 fi
 OFI=$1
+WITH_XCCL=$2
 
 apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -42,7 +43,7 @@ then
 fi
 
 AWS_SRC_DIR=/tmp/aws-ofi-nccl
-ROCM_DIR=/opt/rocm
+ROCM_DIR=/opt/rocm/
 mkdir -p ${AWS_SRC_DIR}
 cd ${AWS_SRC_DIR}
 
@@ -59,32 +60,69 @@ then
     AWS_BASE_URL="https://github.com/aws/aws-ofi-nccl/releases/download"
     AWS_NAME="${AWS_NAME}-${AWS_VER_NUM}"
     AWS_URL="${AWS_BASE_URL}/${AWS_VER}/${AWS_NAME}.tar.gz"
-    wget ${AWS_URL}
-    tar -xzf ${AWS_NAME}.tar.gz --no-same-owner
-    cd ${AWS_NAME}
+
+    echo "Building AWS for NVIDIA $AWS_CONFIG_OPTIONS WITH_XCCL=$WITH_XCCL"
+    if [ "$WITH_XCCL" == "1" ]; then
+        #### git clone https://github.com/HewlettPackard/open-ofi-xccl.git
+        git clone https://github.com/ryanhankins/open-ofi-xccl.git
+        cd open-ofi-xccl
+        git checkout v1.14.x-xccl
+    else
+        ###export CC=g++
+        wget ${AWS_URL}
+        tar -xzf ${AWS_NAME}.tar.gz --no-same-owner
+        cd ${AWS_NAME}
+    fi
 else
-    echo "Building AWS for AMD"
     AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
       --with-libfabric=${HPC_DIR}            \
       --with-rccl=${ROCM_DIR}/rccl           \
       --with-mpi=${HPC_DIR}                  \
+      --with-rocm=${ROCM_DIR}                \
       --with-hip=${ROCM_DIR}   ${WITH_AWS_TRACE}"
-    git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
-    cd aws-ofi-rccl
-    export CC=hipcc
-    export CFLAGS="-D__HIP_PLATFORM_AMD__"
-    ###
-    ### The following magic addresses https://github.com/ROCm/aws-ofi-rccl/pull/14
-    ### until such time that the aws-ofi-rccl repo is updated.
-    ###
-    sed -i '39i\
+    echo "Building AWS for AMD $AWS_CONFIG_OPTIONS WITH_XCCL=$WITH_XCCL"
+    if [ "$WITH_XCCL" == "1" ]; then
+        git clone https://github.com/ryanhankins/open-ofi-xccl.git
+        cd open-ofi-xccl
+        git checkout v1.14.x-xccl
+        cat > xccl.patch <<EOF
+diff --git a/src/nccl_ofi_ofiutils.c b/src/nccl_ofi_ofiutils.c
+index 4cf3305..8f4bb1a 100644
+--- a/src/nccl_ofi_ofiutils.c
++++ b/src/nccl_ofi_ofiutils.c
+@@ -364,9 +364,7 @@ int nccl_ofi_ofiutils_init_connection(struct fi_info *info, struct fid_domain *d
+ 		 */
+ 		support_gdr = GDR_SUPPORTED;
+ #else
+-		NCCL_OFI_WARN("Using Libfabric 1.18 API with GPUDirect RDMA support, and FI_OPT_CUDA_API_PERMITTED is not declared.");
+-		ret = -EOPNOTSUPP;
+-		goto error;
++		support_gdr = GDR_SUPPORTED;
+ #endif
+ 	}
+ 	/* Run platform-specific endpoint configuration hook if declared */
+EOF
+        git apply --ignore-space-change --ignore-whitespace xccl.patch
+    else
+        git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
+        cd aws-ofi-rccl
+        ###export CC=hipcc
+        ###export CFLAGS="-D__HIP_PLATFORM_AMD__"
+        ###
+        ### The following magic addresses https://github.com/ROCm/aws-ofi-rccl/pull/14
+        ### until such time that the aws-ofi-rccl repo is updated.
+        ###
+        sed -i '39i\
 /* Copied from libfabric:rdma/fabric.h@30ec628: "libfabric: Initial commit" */\
 #ifndef container_of\
 #define container_of(ptr, type, field) ((type *) ((char *)ptr - offsetof(type, field)))\
 #endif\
 /* end of copied libfabric macros */\
 '   include/nccl_ofi.h
-    head -50 include/nccl_ofi.h
+        head -50 include/nccl_ofi.h
+    fi
+    export CC=hipcc
+    export CFLAGS="-D__HIP_PLATFORM_AMD__"
     ###
     ###  End of magic
     ###
