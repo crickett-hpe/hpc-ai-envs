@@ -77,16 +77,37 @@ cray_ofi_config_opts="--prefix=${HPC_DIR} --with-cassini-headers=${HPC_DIR} --wi
 ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi" 
 ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi"
 
-LIBFABRIC_VERSION=2.1.0
-LIBFABRIC_BASE_URL="https://github.com/ofiwg/libfabric/releases/download"
-LIBFABRIC_NAME="libfabric-${LIBFABRIC_VERSION}"
-LIBFABRIC_URL="${LIBFABRIC_BASE_URL}/v${LIBFABRIC_VERSION}/${LIBFABRIC_NAME}.tar.bz2"
+
+## Building from the Libfabric Releae tar-file
+
+#LIBFABRIC_VERSION=2.1.0
+#LIBFABRIC_BASE_URL="https://github.com/ofiwg/libfabric/releases/download"
+#LIBFABRIC_NAME="libfabric-${LIBFABRIC_VERSION}"
+#LIBFABRIC_URL="${LIBFABRIC_BASE_URL}/v${LIBFABRIC_VERSION}/${LIBFABRIC_NAME}.tar.bz2"
+
+#cd $cray_src_dir                       && \
+#    wget ${LIBFABRIC_URL}              && \
+#    tar -jxf ${LIBFABRIC_NAME}.tar.bz2    \
+#        --no-same-owner                && \
+#    cd ${LIBFABRIC_NAME}               && \
+#    ./autogen.sh                       && \
+#    ./configure CFLAGS="${ofi_cflags}"    \
+#        CPPFLAGS="${ofi_cppflags}"        \
+#	 $cray_ofi_config_opts          && \
+#    make                               && \
+#    make install                       && \
+#    cd ../
+
+
+## Building from the Libfabric main branch
+
+LIBFABRIC_BASE_URL="https://github.com/ofiwg/libfabric.git"
+LIBFABRIC_BRANCH="main"
 
 cd $cray_src_dir                       && \
-    wget ${LIBFABRIC_URL}              && \
-    tar -jxf ${LIBFABRIC_NAME}.tar.bz2    \
-        --no-same-owner                && \
-    cd ${LIBFABRIC_NAME}               && \
+    git clone ${LIBFABRIC_BASE_URL}    && \
+    cd libfabric                       && \
+    git checkout ${LIBFABRIC_BRANCH}   && \
     ./autogen.sh                       && \
     ./configure CFLAGS="${ofi_cflags}"    \
         CPPFLAGS="${ofi_cppflags}"        \
