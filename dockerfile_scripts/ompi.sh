@@ -22,28 +22,13 @@ else
     GPU_OPT="--with-rocm"
 fi
 
-# Create patch for OMPI 5.0.7 for lnx support. Remove this once use newer
-# OMPI that no longer requires this!
-echo "--- ./ompi/mca/mtl/ofi/mtl_ofi_component.c.orig 2024-11-15 08:18:09.000000000 -0600
-+++ ./ompi/mca/mtl/ofi/mtl_ofi_component.c      2025-01-23 09:31:04.000000000 -0600
-@@ -832,7 +832,8 @@
-          * have a problem here since it uses fi_mr_regattr only within the context of an rcache, and manages the
-          * requested_key field in this way.
-          */
--         if (!strncasecmp(prov->fabric_attr->prov_name, \"cxi\", 3)) {
-+         if ((NULL != strstr(prov->fabric_attr->prov_name, \"cxi\")) ||
-+             (NULL != strstr(prov->fabric_attr->prov_name, \"CXI\")) ) {
-              ompi_mtl_ofi.hmem_needs_reg = false;
-          }
-" > ${SCRIPT_DIR}/mtl_ofi_component.patch
-
 OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default \
    --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR}         \
    --without-ucx --with-pmix=internal ${GPU_OPT}"
 
 # Install OMPI
 OMPI_VER=v5.0
-OMPI_VER_NUM=5.0.7
+OMPI_VER_NUM=5.0.8
 OMPI_CONFIG_OPTIONS=${OMPI_CONFIG_OPTIONS_VAR}
 OMPI_SRC_DIR=/tmp/openmpi-src
 OMPI_BASE_URL="https://download.open-mpi.org/release/open-mpi"
@@ -54,7 +39,6 @@ mkdir -p ${OMPI_SRC_DIR}                        && \
   wget ${OMPI_URL}                              && \
   tar -xzf openmpi-${OMPI_VER_NUM}.tar.gz       && \
   cd openmpi-${OMPI_VER_NUM}                    && \
-  patch ./ompi/mca/mtl/ofi/mtl_ofi_component.c ${SCRIPT_DIR}/mtl_ofi_component.patch && \
   ./configure ${OMPI_CONFIG_OPTIONS}            && \
   make                                          && \
   make install                                  && \
