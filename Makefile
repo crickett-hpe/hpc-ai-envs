@@ -30,6 +30,8 @@ WITH_SS11 ?= 0
 WITH_HOROVOD ?= 0
 CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
+NGC_VERSION ?= "25.04"
+LIBFABRIC_VERSION ?= "main"
 
 # If the user doesn't explicitly pass in a value for BUILD_SIF, then
 # default it to 1 if singularity is in the PATH
@@ -127,7 +129,7 @@ endif
 
 NGC_PYTORCH_PREFIX := nvcr.io/nvidia/pytorch
 NGC_TENSORFLOW_PREFIX := nvcr.io/nvidia/tensorflow
-NGC_PYTORCH_VERSION := 25.04-py3
+NGC_PYTORCH_VERSION := $(NGC_VERSION)-py3
 NGC_TENSORFLOW_VERSION := 24.03-tf2-py3
 NGC_PYTORCH_REPO := ngc-$(NGC_PYTORCH_VERSION)-pt
 NGC_PYTORCH_HPC_REPO := ngc-$(NGC_PYTORCH_VERSION)-pt-hpc
@@ -169,6 +171,7 @@ build-pytorch-ngc:
 		--build-arg "WITH_TF=0" \
 		--build-arg "WITH_HOROVOD=$(WITH_HOROVOD)" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
+		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		.
 	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
@@ -218,6 +221,7 @@ build-user-spec-ngc:
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_NGC_BASE_IMAGE)" \
+		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
 		-t $(USER_NGC_IMAGE_HPC)\
 		.
 ifneq ($(HPC_LIBS_DIR),)
