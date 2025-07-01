@@ -88,7 +88,6 @@ RUN if [ "$WITH_HOROVOD" = "1" ] ; then \
 # If we built MPI, override any MPI in /usr/local/mpi that might
 # have been installed by NVIDIA targeting IB.
 # Also build the NCCL tests inside the container
-COPY dockerfile_scripts/additional-requirements-mlperf.txt ${SCRIPT_DIR}
 COPY dockerfile_scripts/build_tests.sh ${SCRIPT_DIR}
 COPY tests/* ${SCRIPT_DIR}
 RUN if [ "$WITH_MPI" = "1" ]; then \
