@@ -1,0 +1,31 @@
+ARG FROM_IMAGE_NAME=nvcr.io/nvidia/nemo-hpc:25.04
+FROM ${FROM_IMAGE_NAME}
+
+# Document build setup                                                          
+ARG FROM_IMAGE_NAME
+ENV CUSTOM_FROM_IMAGE_NAME=${FROM_IMAGE_NAME}
+
+# Custom libraries version                                                      
+#WORKDIR /workspace/
+
+#ARG GITLAB_CLONE_ACCESS_TOKEN
+#ENV GITLAB_CLONE_ACCESS_TOKEN=$GITLAB_CLONE_ACCESS_TOKEN
+#ARG GIT_COMMIT_ID
+#ENV GIT_COMMIT_ID=$GIT_COMMIT_ID
+#
+#RUN git config --global user.name "a" && \
+#    git config --global user.email "a"
+
+
+WORKDIR /workspace/
+
+## 5. Benchmark dependencies                                                    
+#RUN pip uninstall transformers -y                                              
+COPY requirements.txt /tmp
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Benchmark code                                                                
+WORKDIR /workspace/llm
+
+COPY . .
+ENV PYTHONPATH="/workspace/llm:/workspace/NeMo:${PYTHONPATH}"

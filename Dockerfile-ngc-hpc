@@ -13,95 +13,61 @@ RUN mkdir -p ${SCRIPT_DIR}
 
 # Put all HPC related tools we build under /container/hpc so we can
 # have a shared include, lib, bin, etc to simplify our paths and build steps.
+
+COPY dockerfile_scripts/*.sh ${SCRIPT_DIR}
+COPY tests/* ${SCRIPT_DIR}
+
 ARG HPC_DIR=/container/hpc
 RUN mkdir -p ${HPC_DIR}/bin && \
     mkdir -p ${HPC_DIR}/lib && \
     mkdir -p ${HPC_DIR}/include && \
     mkdir -p ${HPC_DIR}/share && \
     ln -s ${HPC_DIR}/lib ${HPC_DIR}/lib64 && \
-    chmod -R go+rX ${HPC_DIR}
+    chmod -R go+rX ${HPC_DIR} && \
+    ${SCRIPT_DIR}/setup_sh_env.sh && \
+    ${SCRIPT_DIR}/install_deb_packages.sh
 ENV LD_LIBRARY_PATH=$HPC_DIR/lib:$LD_LIBRARY_PATH
 ENV PATH=$HPC_DIR/bin:$PATH
 
-# Setup some default env variables. This is for the end user as well
-# as tools we will build since we put include files under HPC_DIR.
-COPY dockerfile_scripts/setup_sh_env.sh ${SCRIPT_DIR}
-RUN ${SCRIPT_DIR}/setup_sh_env.sh
+## Setup some default env variables. This is for the end user as well
+## as tools we will build since we put include files under HPC_DIR.
+#COPY dockerfile_scripts/setup_sh_env.sh ${SCRIPT_DIR}
+#RUN ${SCRIPT_DIR}/setup_sh_env.sh
 
-# We run this here even though it might be a repeat from the base image
-# to make sure we have the required bits for building NCCL, libcxi, etc.
-COPY dockerfile_scripts/install_deb_packages.sh ${SCRIPT_DIR}
-RUN ${SCRIPT_DIR}/install_deb_packages.sh
+## We run this here even though it might be a repeat from the base image
+## to make sure we have the required bits for building NCCL, libcxi, etc.
+#COPY dockerfile_scripts/install_deb_packages.sh ${SCRIPT_DIR}
+#RUN ${SCRIPT_DIR}/install_deb_packages.sh
 
 ARG WITH_NCCL
+ARG WITH_OFI
+ARG LIBFABRIC_VERSION
+ARG WITH_MPI
+ARG OMPI_WITH_CUDA=1
+ARG WITH_AWS_TRACE
+
 # If we override NCCL we need to set these env vars for Horovod so that
 # it links against the right one later on when we build it.
 ENV HOROVOD_NCCL_HOME=${WITH_NCCL:+$HPC_DIR}
 ENV HOROVOD_NCCL_LINK=${WITH_NCCL:+SHARED}
-COPY dockerfile_scripts/build_nccl.sh ${SCRIPT_DIR}
-RUN if [ -n "${WITH_NCCL}" ]; then ${SCRIPT_DIR}/build_nccl.sh; fi
-ENV NCCL_LIB_DIR=${HOROVOD_NCCL_HOME}/lib
-ENV LD_LIBRARY_PATH=${WITH_NCCL:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
 
-# Should we just use /container as the install dir and put
-# everything (ie, ucx/ofi/ompi/mpich) under /container/{bin|lib}
-# to clean up these arguments?
-# Install Cray CXI headers/lib
-COPY dockerfile_scripts/cray-libs.sh ${SCRIPT_DIR}
-ARG WITH_OFI
-ARG LIBFABRIC_VERSION
-RUN if [ "$WITH_OFI" = "1" ]; then \
-    ${SCRIPT_DIR}/cray-libs.sh "$LIBFABRIC_VERSION"; \
-    fi
-
-# Install all HPC related tools under /container (e.g., mpi, ofi, etc).
-ARG WITH_MPI
-ARG MPI_TYPE
-ARG OMPI_WITH_CUDA=1
-COPY dockerfile_scripts/ompi.sh ${SCRIPT_DIR}
-RUN if [ "$WITH_MPI" = "1" ]; then \
-    ${SCRIPT_DIR}/ompi.sh "$UBUNTU_VERSION" \
-		 "$WITH_OFI" "$OMPI_WITH_CUDA"; \
-    fi
-
-# Enable running OMPI as root. Note that we only need this if we use OMPI. 
 ENV OMPI_ALLOW_RUN_AS_ROOT ${WITH_MPI:+1}
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM ${WITH_MPI:+1}
 # Need to override this so we don't try using the OMPI built into the
 # base container, which is not built correctly for libfabric
 ENV OPAL_PREFIX=${WITH_MPI:+$HPC_DIR}
 
-ARG WITH_AWS_TRACE
-COPY dockerfile_scripts/build_aws.sh ${SCRIPT_DIR}
-RUN if [ "$WITH_OFI" = "1" ]; then \
-    ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_AWS_TRACE"; \
-    fi
-
-# Try installing Horovod
-ARG WITH_PT
-ARG WITH_TF
-COPY dockerfile_scripts/build_horovod.sh ${SCRIPT_DIR}
-RUN if [ "$WITH_HOROVOD" = "1" ] ; then \
-    ${SCRIPT_DIR}/build_horovod.sh "$WITH_PT" "$WITH_TF"; \
-    fi
-
-# If we built MPI, override any MPI in /usr/local/mpi that might
-# have been installed by NVIDIA targeting IB.
-# Also build the NCCL tests inside the container
-COPY dockerfile_scripts/additional-requirements-mlperf.txt ${SCRIPT_DIR}
-COPY dockerfile_scripts/build_tests.sh ${SCRIPT_DIR}
-COPY tests/* ${SCRIPT_DIR}
-RUN if [ "$WITH_MPI" = "1" ]; then \
-    rm -rf /usr/local/mpi && ln -s /container/hpc /usr/local/mpi; \
-    ${SCRIPT_DIR}/build_tests.sh;  \
-    fi
-
-# Set an entrypoint that can scrape up the host libfabric.so and then
-# run the user command. This is intended to enable performant execution
-# on non-IB systems that have a proprietary libfabric.
-COPY dockerfile_scripts/scrape_libs.sh ${SCRIPT_DIR}
-RUN mkdir -p /container/bin && \
+RUN ${SCRIPT_DIR}/build_nccl.sh && \
+    ${SCRIPT_DIR}/cray-libs.sh "$LIBFABRIC_VERSION" && \
+    ${SCRIPT_DIR}/ompi.sh "$UBUNTU_VERSION" "$WITH_OFI" "$OMPI_WITH_CUDA" && \
+    ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_AWS_TRACE" && \
+    rm -rf /usr/local/mpi && ln -s /container/hpc /usr/local/mpi && \
+    ${SCRIPT_DIR}/build_tests.sh && \
+    mkdir -p /container/bin && \
     cp ${SCRIPT_DIR}/scrape_libs.sh /container/bin
-ENTRYPOINT ["/container/bin/scrape_libs.sh"]
 
+ENV NCCL_LIB_DIR=${HOROVOD_NCCL_HOME}/lib
+ENV LD_LIBRARY_PATH=${WITH_NCCL:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
+
+ENTRYPOINT ["/container/bin/scrape_libs.sh"]
 RUN rm -r /tmp/*

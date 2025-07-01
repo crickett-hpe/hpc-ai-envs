@@ -22,8 +22,6 @@ then
     rm ${INSTALL_DIR}/*.o
     rm -rf ${INSTALL_DIR}/verifiable
     make -C ${SCRIPT_DIR}
-
-    pip install --no-cache-dir -r /tmp/dockerfile_scripts/additional-requirements-mlperf.txt
 else
     INSTALL_DIR="${HPC_DIR}/tests/rccl-tests"
     mkdir -p ${INSTALL_DIR}
