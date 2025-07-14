@@ -85,6 +85,12 @@ else
         git clone https://github.com/ryanhankins/open-ofi-xccl.git
         cd open-ofi-xccl
         git checkout v1.14.x-xccl
+        ###
+        ### The following magic indicates during compile time that if
+        ### HAVE_CUDA and HAVE_NEURON are not defined, that GPUDirect
+        ### is still supported by libfabric provider.  This is because
+        ### at this time, HAVE_ROCM is defined.
+        ###
         cat > xccl.patch <<EOF
 diff --git a/src/nccl_ofi_ofiutils.c b/src/nccl_ofi_ofiutils.c
 index 4cf3305..8f4bb1a 100644
@@ -106,8 +112,6 @@ EOF
     else
         git clone https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl
         cd aws-ofi-rccl
-        ###export CC=hipcc
-        ###export CFLAGS="-D__HIP_PLATFORM_AMD__"
         ###
         ### The following magic addresses https://github.com/ROCm/aws-ofi-rccl/pull/14
         ### until such time that the aws-ofi-rccl repo is updated.
