@@ -71,9 +71,10 @@ ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM ${WITH_MPI:+1}
 ENV OPAL_PREFIX=${WITH_MPI:+$HPC_DIR}
 
 ARG WITH_AWS_TRACE
+ARG WITH_XCCL
 COPY dockerfile_scripts/build_aws.sh ${SCRIPT_DIR}
 RUN if [ "$WITH_OFI" = "1" ]; then \
-    ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_AWS_TRACE"; \
+    ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_XCCL" "$WITH_AWS_TRACE"; \
     fi
 
 # Try installing Horovod

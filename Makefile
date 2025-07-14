@@ -78,6 +78,11 @@ else
 	MPI_BUILD_ARG := USE_GLOO=1
 endif
 
+XCCL_BUILD_ARG := WITH_XCCL=0
+ifeq "$(WITH_XCCL)" "1"
+	XCCL_BUILD_ARG := WITH_XCCL=1
+endif
+
 ifeq "$(WITH_SS11)" "1"
 	ifeq ($(HPC_LIBS_DIR),)
            LIBFAB_SO=$(shell find $(CRAY_LIBFABRIC_DIR) -name libfabric\*so.\*)
@@ -163,6 +168,7 @@ build-pytorch-ngc:
 		.
 	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
+		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "WITH_PT=1" \
@@ -213,6 +219,7 @@ build-user-spec-ngc:
 	@echo "USER_NGC_IMAGE_SIF: $(USER_NGC_IMAGE_SIF)"
 	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
+		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "WITH_PT=1" \
@@ -372,6 +379,7 @@ build-pytorch-rocm:
 		.
 	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
+		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "WITH_PT=1" \
@@ -399,6 +407,7 @@ build-user-spec-rocm:
 	@echo "USER_ROCM_IMAGE_SIF: $(USER_ROCM_IMAGE_SIF)"
 	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
+		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "WITH_PT=1" \

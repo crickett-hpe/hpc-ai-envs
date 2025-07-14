@@ -76,8 +76,9 @@ ENV HSA_FORCE_FINE_GRAIN_PCIE=1
 
 ARG AWS_PLUGIN_INSTALL_DIR=/container/hpc
 ARG WITH_AWS_TRACE
+ARG WITH_XCCL
 COPY dockerfile_scripts/build_aws.sh ${SCRIPT_DIR}
-RUN if [ "$WITH_OFI" = "1" ]; then ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_AWS_TRACE"; fi
+RUN if [ "$WITH_OFI" = "1" ]; then ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_XCCL" "$WITH_AWS_TRACE"; fi
 RUN ldconfig
 
 ARG WITH_NFS_WORKAROUND=1
