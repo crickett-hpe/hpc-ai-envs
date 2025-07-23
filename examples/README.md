@@ -38,9 +38,9 @@ directory containing the Cray lib{fabric*|cxi*} is provided then these
 bind mounts should not be necessary.
 
 Here is the list of all our examples:
-- OSU Benchmark
-- NCCL Tests
-- Torch Distributed Tests
-- Horovod Tests
-- Language Modeling
+- **`OSU Benchmark`** (https://https://github.com/crickett-hpe/hpc-ai-envs/blob/soohoon/examples-doc/examples/osu-benchmark)
+- **`NCCL Tests`** (https://github.com/crickett-hpe/hpc-ai-envs/tree/soohoon/examples-doc/examples/nccl-tests)
+- **`Torch Distributed Tests`** (https://github.com/crickett-hpe/hpc-ai-envs/tree/soohoon/examples-doc/examples/torch-distributed)
+- **`Horovod Tests`** (https://github.com/crickett-hpe/hpc-ai-envs/tree/soohoon/examples-doc/examples/horovod)
+- **`Language Modeling`** (https://github.com/crickett-hpe/hpc-ai-envs/tree/soohoon/examples-doc/examples/language-modeling)
 
