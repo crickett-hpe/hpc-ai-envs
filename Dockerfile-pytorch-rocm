@@ -44,7 +44,7 @@ RUN echo "Cleaning up Conda environment..." && \
 ###
 FROM ubuntu:22.04 AS flatten_rocm
 
-RUN echo "--- INFO: Stage 2: Copying large ROCm and Conda directories from source image. This may take several minutes. Please be patient. ---"
+RUN echo "--- INFO: Stage 2: Copying large ROCm and Conda directories from shrink_rocm image. This may take several minutes. Please be patient. ---"
 
 COPY --from=shrink_rocm /opt/amdgpu /opt/amdgpu
 COPY --from=shrink_rocm /opt/rocm /opt/rocm
