@@ -30,8 +30,8 @@ WITH_SS11 ?= 0
 WITH_HOROVOD ?= 0
 CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
-NGC_VERSION ?= "25.04"
-LIBFABRIC_VERSION ?= "main"
+NGC_VERSION ?= "25.06"
+LIBFABRIC_VERSION ?= "2.2.0"
 
 # If the user doesn't explicitly pass in a value for BUILD_SIF, then
 # default it to 1 if singularity is in the PATH

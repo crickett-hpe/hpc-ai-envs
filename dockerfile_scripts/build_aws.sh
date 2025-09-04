@@ -17,8 +17,8 @@ apt-get update \
 				      --no-install-recommends tcsh
 
 # Install AWS_OFI_NCCL
-AWS_VER=v1.14.2
-AWS_VER_NUM=1.14.2
+AWS_VER=v1.16.3
+AWS_VER_NUM=1.16.3
 AWS_NAME=aws-ofi-nccl
 AWS_FILE="${AWS_NAME}-${AWS_VER_NUM}"
 cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
