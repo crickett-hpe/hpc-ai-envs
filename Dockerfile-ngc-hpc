@@ -45,6 +45,7 @@ ARG LIBFABRIC_VERSION
 ARG WITH_MPI
 ARG OMPI_WITH_CUDA=1
 ARG WITH_AWS_TRACE
+ARG WITH_XCCL
 
 # If we override NCCL we need to set these env vars for Horovod so that
 # it links against the right one later on when we build it.
@@ -60,7 +61,7 @@ ENV OPAL_PREFIX=${WITH_MPI:+$HPC_DIR}
 RUN ${SCRIPT_DIR}/build_nccl.sh && \
     ${SCRIPT_DIR}/cray-libs.sh "$LIBFABRIC_VERSION" && \
     ${SCRIPT_DIR}/ompi.sh "$UBUNTU_VERSION" "$WITH_OFI" "$OMPI_WITH_CUDA" && \
-    ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_AWS_TRACE" && \
+    ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_XCCL" "$WITH_AWS_TRACE" && \
     rm -rf /usr/local/mpi && ln -s /container/hpc /usr/local/mpi && \
     ${SCRIPT_DIR}/build_tests.sh && \
     mkdir -p /container/bin && \

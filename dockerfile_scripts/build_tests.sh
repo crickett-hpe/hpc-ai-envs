@@ -1,8 +1,7 @@
-#!/usr/bin/env bash
-
 set -x
 SCRIPT_DIR=$(dirname "$0")
 TDIR="/tmp/tests"
+SDIR="/tmp/nccl_src"
 mkdir -p ${TDIR}
 cd ${TDIR}
 if [ ! -d /opt/rocm ]
@@ -22,6 +21,22 @@ then
     rm ${INSTALL_DIR}/*.o
     rm -rf ${INSTALL_DIR}/verifiable
     make -C ${SCRIPT_DIR}
+
+#    NCCL_MAJOR=$(grep "NCCL_MAJOR " /usr/include/nccl.h | awk '{print $NF}')
+#    NCCL_MINOR=$(grep "NCCL_MINOR " /usr/include/nccl.h | awk '{print $NF}')
+#    NCCL_PATCH=$(grep "NCCL_PATCH " /usr/include/nccl.h | awk '{print $NF}')
+#
+#    git clone https://github.com/nvidia/nccl.git $SDIR
+#    #(cd $SDIR && git checkout v${NCCL_MAJOR}.${NCCL_MINOR}.${NCCL_PATCH}-1)
+#    (cd $SDIR && git checkout v2.27.7-1)
+#
+#    # Make the example nccl profiler
+#    cd ${SDIR}/ext-profiler/example && \
+#        make && \
+#        cp libnccl-profiler*.so ${HPC_DIR}/lib
+
+    set -x
+
 else
     INSTALL_DIR="${HPC_DIR}/tests/rccl-tests"
     mkdir -p ${INSTALL_DIR}
@@ -36,4 +51,5 @@ else
     rm -rf ${INSTALL_DIR}/hipify
 fi
 cd /tmp
-rm -rf ${TDIR}
+rm -rf ${TDIR} ${SDIR}
+

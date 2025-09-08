@@ -7,7 +7,6 @@ CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
 
 git clone https://github.com/nvidia/nccl.git /tmp/nccl_src
 
-
 (cd /tmp/nccl_src && git checkout v2.27.7-1)
 
 export NVCC_GENCODE="-gencode=arch=compute_90,code=sm_90"

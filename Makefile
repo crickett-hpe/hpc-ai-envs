@@ -28,6 +28,7 @@ WITH_MPI ?= 1
 WITH_OFI ?= 1
 WITH_SS11 ?= 0
 WITH_HOROVOD ?= 0
+WITH_AWS_TRACE ?= 0
 CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
 NGC_VERSION ?= "25.04"
@@ -51,15 +52,18 @@ ifeq "$(WITH_MPI)" "1"
 	HOROVOD_WITHOUT_MPI := 0
 	HOROVOD_CPU_OPERATIONS := MPI
 	CUDA_SUFFIX := -cuda
-	WITH_AWS_TRACE := 0
 	NCCL_BUILD_ARG := WITH_NCCL
         ifeq "$(WITH_NCCL)" "1"
 		NCCL_BUILD_ARG := WITH_NCCL=1
 		ifeq "$(WITH_AWS_TRACE)" "1"
-			WITH_AWS_TRACE := 1
+			AWS_TRACE_ARG := WITH_AWS_TRACE=1
 		endif
         endif
 	MPI_BUILD_ARG := WITH_MPI=1
+
+	ifeq "$(WITH_AWS_TRACE)" "1"
+		AWS_TRACE_ARG := WITH_AWS_TRACE=1
+	endif
 
 	ifeq "$(WITH_OFI)" "1"
 	        CUDA_SUFFIX := -cuda
@@ -173,6 +177,7 @@ build-pytorch-ngc:
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(AWS_TRACE_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg "WITH_HOROVOD=$(WITH_HOROVOD)" \
@@ -225,6 +230,7 @@ build-user-spec-ngc:
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(AWS_TRACE_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_NGC_BASE_IMAGE)" \
@@ -386,6 +392,7 @@ build-pytorch-rocm:
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(AWS_TRACE_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
@@ -414,6 +421,7 @@ build-user-spec-rocm:
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(AWS_TRACE_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_ROCM_BASE_IMAGE)" \
