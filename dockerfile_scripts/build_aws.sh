@@ -72,6 +72,11 @@ then
         wget ${AWS_URL}
         tar -xzf ${AWS_NAME}.tar.gz --no-same-owner
         cd ${AWS_NAME}
+
+	CUDA_VERSION_NUM=`echo $CUDA_VERSION | awk -F "." '{print $1}'`
+	if [ $CUDA_VERSION_NUM -gt 12 ]; then
+	    patch -p1 -i /tmp/dockerfile_scripts/patches/cuda-${CUDA_VERSION_NUM}/aws-ofi-nccl.patch
+	fi
     fi
 else
     AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
