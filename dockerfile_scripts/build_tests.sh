@@ -22,9 +22,6 @@ then
     rm ${INSTALL_DIR}/*.o
     rm -rf ${INSTALL_DIR}/verifiable
     make -C ${SCRIPT_DIR}
-
-    set -x
-
 else
     INSTALL_DIR="${HPC_DIR}/tests/rccl-tests"
     mkdir -p ${INSTALL_DIR}
@@ -40,4 +37,3 @@ else
 fi
 cd /tmp
 rm -rf ${TDIR}
-
