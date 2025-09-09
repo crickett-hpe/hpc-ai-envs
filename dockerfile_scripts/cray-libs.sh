@@ -82,27 +82,18 @@ if [[ "$LIBFABRIC_VERSION" == "main" ]]; then
   ## Building from the Libfabric main branch
 
   LIBFABRIC_BASE_URL="https://github.com/ofiwg/libfabric.git"
-  LIBFABRIC_BRANCH="main"
 
-  echo "Building libfabric from the main branch: $LIBFABRIC_BASE_URL"
+  echo "Building libfabric from the $LIBFABRIC_VERSION branch: $LIBFABRIC_BASE_URL"
   
   cd $cray_src_dir                       && \
       git clone ${LIBFABRIC_BASE_URL}    && \
       cd libfabric                       && \
-      git checkout ${LIBFABRIC_BRANCH}   && \
-      ./autogen.sh                       && \
-      ./configure CFLAGS="${ofi_cflags}"    \
-          CPPFLAGS="${ofi_cppflags}"        \
-	  $cray_ofi_config_opts          && \
-      make                               && \
-      make install                       && \
-      cd ../
+      git checkout ${LIBFABRIC_VERSION}
 else
   ## Building from the Libfabric Releae tar-file
 
   echo "Building libfabric from the release version: $LIBFABRIC_VERSION"
 
-  #LIBFABRIC_VERSION=2.1.0
   LIBFABRIC_BASE_URL="https://github.com/ofiwg/libfabric/releases/download"
   LIBFABRIC_NAME="libfabric-${LIBFABRIC_VERSION}"
   LIBFABRIC_URL="${LIBFABRIC_BASE_URL}/v${LIBFABRIC_VERSION}/${LIBFABRIC_NAME}.tar.bz2"
@@ -111,16 +102,16 @@ else
       wget ${LIBFABRIC_URL}              && \
       tar -jxf ${LIBFABRIC_NAME}.tar.bz2    \
           --no-same-owner                && \
-      cd ${LIBFABRIC_NAME}               && \
-      ./autogen.sh                       && \
-      ./configure CFLAGS="${ofi_cflags}"    \
-          CPPFLAGS="${ofi_cppflags}"        \
-  	 $cray_ofi_config_opts          && \
-      make                               && \
-      make install                       && \
-      cd ../
-
+      cd ${LIBFABRIC_NAME}
 fi
 
+./autogen.sh                       && \
+./configure CFLAGS="${ofi_cflags}"    \
+    CPPFLAGS="${ofi_cppflags}"        \
+    ${cray_ofi_config_opts}        && \
+make                               && \
+make install                       && \
+cd ../
+    
 # Clean up our git repos used to build cxi/libfabric
 rm -rf $cray_src_dir
