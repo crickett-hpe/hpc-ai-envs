@@ -28,8 +28,11 @@ WITH_MPI ?= 1
 WITH_OFI ?= 1
 WITH_SS11 ?= 0
 WITH_HOROVOD ?= 0
+WITH_AWS_TRACE ?= 0
 CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
+NGC_VERSION ?= "25.06"
+LIBFABRIC_VERSION ?= "2.2.0"
 
 # If the user doesn't explicitly pass in a value for BUILD_SIF, then
 # default it to 1 if singularity is in the PATH
@@ -49,15 +52,15 @@ ifeq "$(WITH_MPI)" "1"
 	HOROVOD_WITHOUT_MPI := 0
 	HOROVOD_CPU_OPERATIONS := MPI
 	CUDA_SUFFIX := -cuda
-	WITH_AWS_TRACE := 0
 	NCCL_BUILD_ARG := WITH_NCCL
         ifeq "$(WITH_NCCL)" "1"
 		NCCL_BUILD_ARG := WITH_NCCL=1
-		ifeq "$(WITH_AWS_TRACE)" "1"
-			WITH_AWS_TRACE := 1
-		endif
         endif
 	MPI_BUILD_ARG := WITH_MPI=1
+
+	ifeq "$(WITH_AWS_TRACE)" "1"
+		AWS_TRACE_ARG := WITH_AWS_TRACE=1
+	endif
 
 	ifeq "$(WITH_OFI)" "1"
 	        CUDA_SUFFIX := -cuda
@@ -132,7 +135,7 @@ endif
 
 NGC_PYTORCH_PREFIX := nvcr.io/nvidia/pytorch
 NGC_TENSORFLOW_PREFIX := nvcr.io/nvidia/tensorflow
-NGC_PYTORCH_VERSION := 25.04-py3
+NGC_PYTORCH_VERSION := $(NGC_VERSION)-py3
 NGC_TENSORFLOW_VERSION := 24.03-tf2-py3
 NGC_PYTORCH_REPO := ngc-$(NGC_PYTORCH_VERSION)-pt
 NGC_PYTORCH_HPC_REPO := ngc-$(NGC_PYTORCH_VERSION)-pt-hpc
@@ -171,10 +174,12 @@ build-pytorch-ngc:
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(AWS_TRACE_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg "WITH_HOROVOD=$(WITH_HOROVOD)" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
+		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		.
 	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
@@ -222,9 +227,11 @@ build-user-spec-ngc:
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(AWS_TRACE_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_NGC_BASE_IMAGE)" \
+		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
 		-t $(USER_NGC_IMAGE_HPC)\
 		.
 ifneq ($(HPC_LIBS_DIR),)
@@ -382,6 +389,7 @@ build-pytorch-rocm:
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(AWS_TRACE_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
@@ -410,6 +418,7 @@ build-user-spec-rocm:
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
+		--build-arg "$(AWS_TRACE_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_ROCM_BASE_IMAGE)" \

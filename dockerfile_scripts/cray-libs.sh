@@ -2,6 +2,7 @@
 
 set -x
 
+LIBFABRIC_VERSION=$1
 
 # The NGC base image from 24.11 and newer seems to include a build of
 # libfabric and the AWS plugin. We need to remove it to prevent issues
@@ -77,44 +78,40 @@ cray_ofi_config_opts="--prefix=${HPC_DIR} --with-cassini-headers=${HPC_DIR} --wi
 ofi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi" 
 ofi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi"
 
+if [[ "$LIBFABRIC_VERSION" == "main" ]]; then
+  ## Building from the Libfabric main branch
 
-## Building from the Libfabric Releae tar-file
+  LIBFABRIC_BASE_URL="https://github.com/ofiwg/libfabric.git"
 
-#LIBFABRIC_VERSION=2.1.0
-#LIBFABRIC_BASE_URL="https://github.com/ofiwg/libfabric/releases/download"
-#LIBFABRIC_NAME="libfabric-${LIBFABRIC_VERSION}"
-#LIBFABRIC_URL="${LIBFABRIC_BASE_URL}/v${LIBFABRIC_VERSION}/${LIBFABRIC_NAME}.tar.bz2"
+  echo "Building libfabric from the $LIBFABRIC_VERSION branch: $LIBFABRIC_BASE_URL"
+  
+  cd $cray_src_dir                       && \
+      git clone ${LIBFABRIC_BASE_URL}    && \
+      cd libfabric                       && \
+      git checkout ${LIBFABRIC_VERSION}
+else
+  ## Building from the Libfabric Releae tar-file
 
-#cd $cray_src_dir                       && \
-#    wget ${LIBFABRIC_URL}              && \
-#    tar -jxf ${LIBFABRIC_NAME}.tar.bz2    \
-#        --no-same-owner                && \
-#    cd ${LIBFABRIC_NAME}               && \
-#    ./autogen.sh                       && \
-#    ./configure CFLAGS="${ofi_cflags}"    \
-#        CPPFLAGS="${ofi_cppflags}"        \
-#	 $cray_ofi_config_opts          && \
-#    make                               && \
-#    make install                       && \
-#    cd ../
+  echo "Building libfabric from the release version: $LIBFABRIC_VERSION"
 
+  LIBFABRIC_BASE_URL="https://github.com/ofiwg/libfabric/releases/download"
+  LIBFABRIC_NAME="libfabric-${LIBFABRIC_VERSION}"
+  LIBFABRIC_URL="${LIBFABRIC_BASE_URL}/v${LIBFABRIC_VERSION}/${LIBFABRIC_NAME}.tar.bz2"
 
-## Building from the Libfabric main branch
+  cd $cray_src_dir                       && \
+      wget ${LIBFABRIC_URL}              && \
+      tar -jxf ${LIBFABRIC_NAME}.tar.bz2    \
+          --no-same-owner                && \
+      cd ${LIBFABRIC_NAME}
+fi
 
-LIBFABRIC_BASE_URL="https://github.com/ofiwg/libfabric.git"
-LIBFABRIC_BRANCH="main"
-
-cd $cray_src_dir                       && \
-    git clone ${LIBFABRIC_BASE_URL}    && \
-    cd libfabric                       && \
-    git checkout ${LIBFABRIC_BRANCH}   && \
-    ./autogen.sh                       && \
-    ./configure CFLAGS="${ofi_cflags}"    \
-        CPPFLAGS="${ofi_cppflags}"        \
-	$cray_ofi_config_opts          && \
-    make                               && \
-    make install                       && \
-    cd ../
-
+./autogen.sh                       && \
+./configure CFLAGS="${ofi_cflags}"    \
+    CPPFLAGS="${ofi_cppflags}"        \
+    ${cray_ofi_config_opts}        && \
+make                               && \
+make install                       && \
+cd ../
+    
 # Clean up our git repos used to build cxi/libfabric
 rm -rf $cray_src_dir

@@ -49,8 +49,9 @@ ENV LD_LIBRARY_PATH=${WITH_NCCL:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
 # Install Cray CXI headers/lib
 COPY dockerfile_scripts/cray-libs.sh ${SCRIPT_DIR}
 ARG WITH_OFI
+ARG LIBFABRIC_VERSION
 RUN if [ "$WITH_OFI" = "1" ]; then \
-    ${SCRIPT_DIR}/cray-libs.sh ; \
+    ${SCRIPT_DIR}/cray-libs.sh "$LIBFABRIC_VERSION"; \
     fi
 
 # Install all HPC related tools under /container (e.g., mpi, ofi, etc).
@@ -73,6 +74,7 @@ ENV OPAL_PREFIX=${WITH_MPI:+$HPC_DIR}
 ARG WITH_AWS_TRACE
 ARG WITH_XCCL
 COPY dockerfile_scripts/build_aws.sh ${SCRIPT_DIR}
+COPY dockerfile_scripts/patches/ ${SCRIPT_DIR}/patches
 RUN if [ "$WITH_OFI" = "1" ]; then \
     ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_XCCL" "$WITH_AWS_TRACE"; \
     fi
@@ -87,13 +89,11 @@ RUN if [ "$WITH_HOROVOD" = "1" ] ; then \
 
 # If we built MPI, override any MPI in /usr/local/mpi that might
 # have been installed by NVIDIA targeting IB.
-RUN if [ "$WITH_MPI" = "1" ] ; then \
-    rm -rf /usr/local/mpi && ln -s /container/hpc /usr/local/mpi; \
-fi
-
+# Also build the NCCL tests inside the container
 COPY dockerfile_scripts/build_tests.sh ${SCRIPT_DIR}
 COPY tests/* ${SCRIPT_DIR}
 RUN if [ "$WITH_MPI" = "1" ]; then \
+    rm -rf /usr/local/mpi && ln -s /container/hpc /usr/local/mpi; \
     ${SCRIPT_DIR}/build_tests.sh;  \
     fi
 

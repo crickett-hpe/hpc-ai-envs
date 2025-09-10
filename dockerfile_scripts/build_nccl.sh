@@ -8,11 +8,19 @@ CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
 git clone https://github.com/nvidia/nccl.git /tmp/nccl_src
 
 
-(cd /tmp/nccl_src && git checkout v2.23.4-1)
+(cd /tmp/nccl_src && git checkout v2.27.7-1)
 
-export NVCC_GENCODE="-gencode=arch=compute_90,code=sm_90"
+## Cuda Compute Capability
+## 8.0: A100, A30
+## 9.0: GH200, H200, H100
+export NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_90,code=sm_90"
 #make DEBUG=1 NVCC_GENCODE=${NVCC_GENCODE} CUDA_HOME=${CUDA_DIR} PREFIX=${HOROVOD_NCCL_HOME} -C /tmp/nccl_src -j 4 install
 make CUDA_HOME=${CUDA_DIR} NVCC_GENCODE=${NVCC_GENCODE} PREFIX=${HOROVOD_NCCL_HOME} -C /tmp/nccl_src -j 4 install
+
+# Make the example nccl profiler
+cd /tmp/nccl_src/ext-profiler/example && \
+    make && \
+    cp libnccl-profiler-example.so ${HOROVOD_NCCL_HOME}/lib
 
 rm -rf /tmp/nccl_src
 

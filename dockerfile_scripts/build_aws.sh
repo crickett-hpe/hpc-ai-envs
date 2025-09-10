@@ -17,8 +17,8 @@ apt-get update \
 				      --no-install-recommends tcsh
 
 # Install AWS_OFI_NCCL
-AWS_VER=v1.14.2
-AWS_VER_NUM=1.14.2
+AWS_VER=v1.16.3
+AWS_VER_NUM=1.16.3
 AWS_NAME=aws-ofi-nccl
 AWS_FILE="${AWS_NAME}-${AWS_VER_NUM}"
 cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
@@ -72,6 +72,11 @@ then
         wget ${AWS_URL}
         tar -xzf ${AWS_NAME}.tar.gz --no-same-owner
         cd ${AWS_NAME}
+
+	CUDA_VERSION_NUM=`echo $CUDA_VERSION | awk -F "." '{print $1}'`
+	if [ $CUDA_VERSION_NUM -gt 12 ]; then
+	    patch -p1 -i /tmp/dockerfile_scripts/patches/cuda-${CUDA_VERSION_NUM}/aws-ofi-nccl.patch
+	fi
     fi
 else
     AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
