@@ -21,6 +21,8 @@ then
     make -j8  MPI=1 MPI_HOME=${HPC_DIR} CUDA_HOME=${CUDA_DIR} NCCL_HOME=${HPC_DIR} BUILDDIR=${INSTALL_DIR}
     rm ${INSTALL_DIR}/*.o
     rm -rf ${INSTALL_DIR}/verifiable
+    ## Build tests/nccl-sanity.c
+    make -C ${SCRIPT_DIR}
 else
     INSTALL_DIR="${HPC_DIR}/tests/rccl-tests"
     mkdir -p ${INSTALL_DIR}
