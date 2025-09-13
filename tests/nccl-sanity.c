@@ -3,6 +3,7 @@
 #include <stdint.h>       // For uint64_t used in calculation
 #include <mpi.h>          // For MPI Process Management
 #include <cuda_runtime.h> // For CUDA Runtime API (needed for cudaGetDeviceCount)
+#include <cuda.h>         // For CUDA (needed for CUDA_VERSION)
 #include <nccl.h>         // For NCCL API
 
 // Error checking macros
@@ -152,7 +153,14 @@ int main(int argc, char* argv[]) {
     // [0, num_gpus_available - 1] because of the divisibility check earlier.
     struct cudaDeviceProp deviceProp;
     CUDACHECK(cudaGetDeviceProperties(&deviceProp, my_gpu_index));
-    is_gpu_shared = (deviceProp.computeMode == cudaComputeModeDefault) ? 1 : 0;
+
+    int computeMode;
+#if CUDA_VERSION >= 13000
+    cudaDeviceGetAttribute(&computeMode, cudaDevAttrComputeMode, my_gpu_index);
+#else
+    computeMode = deviceProp.computeMode;
+#endif
+    is_gpu_shared = (computeMode == cudaComputeModeDefault) ? 1 : 0;
 
     printf("[Rank %d] My GPU Index: %d, Is Leader: %s GPU Shareable: %s\n",
            my_total_rank,
