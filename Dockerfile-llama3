@@ -1,4 +1,4 @@
-ARG FROM_IMAGE_NAME=nvcr.io/nvidia/nemo-hpc:25.04
+ARG FROM_IMAGE_NAME=nvcr.io/nvidia/nemo-hpc:25.07
 FROM ${FROM_IMAGE_NAME}
 
 # Document build setup                                                          
