@@ -393,6 +393,7 @@ build-pytorch-rocm:
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
+		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
 		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		.
 ifeq "$(BUILD_SIF)" "1"
@@ -422,6 +423,7 @@ build-user-spec-rocm:
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_ROCM_BASE_IMAGE)" \
+		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
 		-t $(USER_ROCM_IMAGE_HPC)\
 		.
 ifeq "$(BUILD_SIF)" "1"

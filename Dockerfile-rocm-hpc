@@ -43,8 +43,9 @@ RUN ${SCRIPT_DIR}/install_deb_packages.sh
 # Install Cray CXI headers/lib
 COPY dockerfile_scripts/cray-libs.sh ${SCRIPT_DIR}
 ARG WITH_OFI
+ARG LIBFABRIC_VERSION
 RUN if [ "$WITH_OFI" = "1" ]; then \
-    ${SCRIPT_DIR}/cray-libs.sh ; \
+    ${SCRIPT_DIR}/cray-libs.sh "$LIBFABRIC_VERSION"; \
     fi
 
 #USING OFI
