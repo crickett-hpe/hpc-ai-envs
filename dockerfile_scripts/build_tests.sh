@@ -30,6 +30,10 @@ else
     RCCL_REPO="https://github.com/ROCm/rccl-tests.git"
     git clone --depth 1 ${RCCL_REPO}
     cd rccl-tests
+    if [[ ! -d /opt/rocm/rccl && -r /usr/local/lib/librccl.so ]]
+    then
+        export CUSTOM_RCCL_LIB=/usr/local/lib
+    fi
     make -j8  MPI=1 MPI_HOME=${HPC_DIR} BUILDDIR=${INSTALL_DIR}
     rm ${INSTALL_DIR}/*.o
     rm -rf ${INSTALL_DIR}/verifiable

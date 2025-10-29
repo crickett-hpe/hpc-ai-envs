@@ -42,6 +42,14 @@ cd $cray_src_dir/shs-cxi-driver && \
 #cxi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -g -O0"
 cxi_cflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi" 
 cxi_cppflags="-Wno-unused-variable -Wno-unused-but-set-variable -I${HPC_DIR}/include -I${HPC_DIR}/linux -I${HPC_DIR}/uapi"
+if [ -d "/opt/rocm" ] ; then
+    pkg-config --exists --print-errors "numa >= 2.0"
+    if [[ $? -ne 0 && -r /usr/include/numa.h ]]; then
+        echo "pkg-config failed (exit code: $?) but numa is installed"
+        export LIBNUMA_CFLAGS=/usr/include
+        export LIBNUMA_LIBS=-lnuma
+    fi
+fi
 cd $cray_src_dir/shs-libcxi && \
     git checkout -b release/shs-13.0 && \
     ./autogen.sh && \
