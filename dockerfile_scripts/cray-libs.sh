@@ -33,7 +33,7 @@ cd $cray_src_dir/shs-cassini-headers && \
 # Install the cxi-driver headers
 cd $cray_src_dir/shs-cxi-driver && \
     cp -r include ${HPC_DIR} && \
-    cp include/linux/cxi.h ${HPC_DIR}/include && \
+    cp include/linux/hpe/cxi/cxi.h ${HPC_DIR}/include && \
     cd ../
     
 # Build libcxi. Note that this will install into ${HPC_DIR} by default,
@@ -51,7 +51,7 @@ if [ -d "/opt/rocm" ] ; then
     fi
 fi
 cd $cray_src_dir/shs-libcxi && \
-    git checkout -b release/shs-13.0 && \
+    git checkout release/shs-13.0.0 && \
     ./autogen.sh && \
     ./configure --prefix=${HPC_DIR} \
 		CFLAGS="${cxi_cflags}" CPPFLAGS="${cxi_cppflags}" && \
