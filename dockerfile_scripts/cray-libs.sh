@@ -50,8 +50,14 @@ if [ -d "/opt/rocm" ] ; then
         export LIBNUMA_LIBS=-lnuma
     fi
 fi
+
+## The latest commit on 10/21/25 0f481bca11d46a8b463dcf706f2ec8becd992972
+## is causing error on Castner (GH200) for NCCL and OSU test
+## Using the 8/6/25 commit 4b7fc964bf5065539a631abf425ba5a1a340e5ba seems to work better.
+## Will be filing bug against slingshot
 cd $cray_src_dir/shs-libcxi && \
     git checkout release/shs-13.0.0 && \
+    git checkout 4b7fc964bf5065539a631abf425ba5a1a340e5ba && \
     ./autogen.sh && \
     ./configure --prefix=${HPC_DIR} \
 		CFLAGS="${cxi_cflags}" CPPFLAGS="${cxi_cppflags}" && \
