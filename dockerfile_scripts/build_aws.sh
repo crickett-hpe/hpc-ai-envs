@@ -40,6 +40,7 @@ then
     ARCH_TYPE=`uname -m`
     if [[ ! -e $CUDA_DIR && -e /opt/nvidia/hpc_sdk ]]; then
         CUDA_DIR="/opt/nvidia/hpc_sdk/Linux_${ARCH_TYPE}/${HPCSDK_VERSION}/cuda"
+	CUDA_VERSION=$(basename `realpath ${CUDA_DIR}/1*`)
     fi
 fi
 
