@@ -7,9 +7,6 @@ NCCL_VERSION=$1
 ARCH_TYPE=`uname -m`
 cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
 CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
-if [[ ! -e $CUDA_DIR && -e /opt/nvidia/hpc_sdk ]]; then
-    CUDA_DIR="/opt/nvidia/hpc_sdk/Linux_${ARCH_TYPE}/${HPCSDK_VERSION}/cuda"
-fi
     
 git clone https://github.com/nvidia/nccl.git /tmp/nccl_src
 
@@ -21,7 +18,7 @@ git clone https://github.com/nvidia/nccl.git /tmp/nccl_src
 export NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_90,code=sm_90"
 make CUDA_HOME=${CUDA_DIR} NVCC_GENCODE="${NVCC_GENCODE}" PREFIX=${HOROVOD_NCCL_HOME} -C /tmp/nccl_src -j 4 install
 
- Make the example nccl profiler
+# Make the example nccl profiler
 cd /tmp/nccl_src/ext-profiler/example && \
     make && \
     cp libnccl-profiler-example.so ${HOROVOD_NCCL_HOME}/lib
