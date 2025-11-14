@@ -4,7 +4,6 @@ set -x
 
 NCCL_VERSION=$1
 
-ARCH_TYPE=`uname -m`
 cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
 CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
     

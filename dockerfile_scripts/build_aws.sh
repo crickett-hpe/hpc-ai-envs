@@ -40,7 +40,6 @@ then
     ARCH_TYPE=`uname -m`
     if [[ ! -e $CUDA_DIR && -e /opt/nvidia/hpc_sdk ]]; then
         CUDA_DIR="/opt/nvidia/hpc_sdk/Linux_${ARCH_TYPE}/${HPCSDK_VERSION}/cuda"
-	CUDA_VERSION=$(basename `realpath ${CUDA_DIR}/1*`)
     fi
 fi
 
@@ -83,7 +82,6 @@ then
         export AWS_OFI_NCCL_VER=$AWS_VER_NUM
     fi
 else
-    #export AWS_OFI_NCCL_VER="1.14.x-xccl"
     export AWS_OFI_NCCL_VER=$XCCL_VER
 
     AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
@@ -150,4 +148,3 @@ make                                          && \
 make install                                  && \
 cd /tmp                                       && \
 rm -rf ${AWS_SRC_DIR}
-

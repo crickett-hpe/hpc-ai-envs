@@ -231,7 +231,7 @@ build-user-spec-ngc:
 	@echo "USER_NGC_IMAGE_HPC: $(USER_NGC_IMAGE_HPC)"
 	@echo "USER_NGC_IMAGE_SS: $(USER_NGC_IMAGE_SS)"
 	@echo "USER_NGC_IMAGE_SIF: $(USER_NGC_IMAGE_SIF)"
-	docker build --no-cache -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
+	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
