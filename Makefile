@@ -239,7 +239,7 @@ build-user-spec-ngc:
 		--build-arg "$(AWS_TRACE_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
-		--build-arg BASE_IMAGE="$(USER_NGC_BASE_IMAGE)" \
+		--build-arg "BASE_IMAGE=$(USER_NGC_BASE_IMAGE)" \
 		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
 		--build-arg "HPC_NCCL_VERSION=$(NCCL_VERSION)" \
 		--build-arg "AWS_VERSION=$(AWS_VERSION)" \

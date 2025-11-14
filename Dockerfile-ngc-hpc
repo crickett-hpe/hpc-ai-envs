@@ -70,8 +70,8 @@ RUN if [ "$WITH_MPI" = "1" ]; then \
     fi
 
 # Enable running OMPI as root. Note that we only need this if we use OMPI. 
-ENV OMPI_ALLOW_RUN_AS_ROOT ${WITH_MPI:+1}
-ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM ${WITH_MPI:+1}
+ENV OMPI_ALLOW_RUN_AS_ROOT=${WITH_MPI:+1}
+ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=${WITH_MPI:+1}
 # Need to override this so we don't try using the OMPI built into the
 # base container, which is not built correctly for libfabric
 ENV OPAL_PREFIX=${WITH_MPI:+$HPC_DIR}
