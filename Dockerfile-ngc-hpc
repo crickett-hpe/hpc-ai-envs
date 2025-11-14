@@ -34,14 +34,19 @@ COPY dockerfile_scripts/install_deb_packages.sh ${SCRIPT_DIR}
 RUN ${SCRIPT_DIR}/install_deb_packages.sh
 
 ARG WITH_NCCL
+ARG HPC_NCCL_VERSION
 # If we override NCCL we need to set these env vars for Horovod so that
 # it links against the right one later on when we build it.
 ENV HOROVOD_NCCL_HOME=${WITH_NCCL:+$HPC_DIR}
 ENV HOROVOD_NCCL_LINK=${WITH_NCCL:+SHARED}
 COPY dockerfile_scripts/build_nccl.sh ${SCRIPT_DIR}
-RUN if [ -n "${WITH_NCCL}" ]; then ${SCRIPT_DIR}/build_nccl.sh; fi
+RUN if [ -n "${WITH_NCCL}" ]; then \
+    ${SCRIPT_DIR}/build_nccl.sh "$HPC_NCCL_VERSION"; \
+    fi
+
 ENV NCCL_LIB_DIR=${HOROVOD_NCCL_HOME}/lib
 ENV LD_LIBRARY_PATH=${WITH_NCCL:+$NCCL_LIB_DIR:}$LD_LIBRARY_PATH
+ENV HPC_NCCL_VERSION=${WITH_NCCL:+$HPC_NCCL_VERSION}
 
 # Should we just use /container as the install dir and put
 # everything (ie, ucx/ofi/ompi/mpich) under /container/{bin|lib}
@@ -73,11 +78,14 @@ ENV OPAL_PREFIX=${WITH_MPI:+$HPC_DIR}
 
 ARG WITH_AWS_TRACE
 ARG WITH_XCCL
+ARG AWS_VERSION
+ARG XCCL_VERSION
 COPY dockerfile_scripts/build_aws.sh ${SCRIPT_DIR}
 COPY dockerfile_scripts/patches/ ${SCRIPT_DIR}/patches
 RUN if [ "$WITH_OFI" = "1" ]; then \
-    ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_XCCL" "$WITH_AWS_TRACE"; \
+    ${SCRIPT_DIR}/build_aws.sh "$AWS_VERSION" "$WITH_XCCL" "$XCCL_VERSION" "$WITH_AWS_TRACE"; \
     fi
+ENV AWS_OFI_NCCL_VERSION "${AWS_VERSION}"
 
 # Try installing Horovod
 ARG WITH_PT

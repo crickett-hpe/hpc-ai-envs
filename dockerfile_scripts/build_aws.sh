@@ -2,23 +2,24 @@
 
 set -x
 
-WITH_AWS_TRACE=""
-if [ $# -gt 2 ] ; then
-    if [ "$3" = "1" ] ; then
-	# Tell AWS to build with trace messages enabled
-	WITH_AWS_TRACE="--enable-trace"
-    fi
-fi
-OFI=$1
+AWS_VER_NUM=$1
 WITH_XCCL=$2
+XCCL_VER=$3
+TRACE=$4
+
+if [ "$TRACE" = "1" ]; then
+    # Tell AWS to build with trace messages enabled
+    WITH_AWS_TRACE="--enable-trace"
+else
+    WITH_AWS_TRACE=""
+fi
 
 apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 				      --no-install-recommends tcsh
 
 # Install AWS_OFI_NCCL
-AWS_VER=v1.16.3
-AWS_VER_NUM=1.16.3
+AWS_VER=v${AWS_VER_NUM}
 AWS_NAME=aws-ofi-nccl
 AWS_FILE="${AWS_NAME}-${AWS_VER_NUM}"
 cuda_ver_str=`echo $CUDA_VERSION | awk -F "." '{print $1"."$2}'`
@@ -63,10 +64,11 @@ then
 
     echo "Building AWS for NVIDIA $AWS_CONFIG_OPTIONS WITH_XCCL=$WITH_XCCL"
     if [ "$WITH_XCCL" == "1" ]; then
+        export AWS_OFI_NCCL_VER=$XCCL_VER
         #### git clone https://github.com/HewlettPackard/open-ofi-xccl.git
         git clone https://github.com/ryanhankins/open-ofi-xccl.git
         cd open-ofi-xccl
-        git checkout v1.14.x-xccl
+        git checkout v${AWS_OFI_NCCL_VER}
     else
         ###export CC=g++
         wget ${AWS_URL}
@@ -77,8 +79,12 @@ then
 	if [ $CUDA_VERSION_NUM -gt 12 ]; then
 	    patch -p1 -i /tmp/dockerfile_scripts/patches/cuda-${CUDA_VERSION_NUM}/aws-ofi-nccl.patch
 	fi
+        export AWS_OFI_NCCL_VER=$AWS_VER_NUM
     fi
 else
+    #export AWS_OFI_NCCL_VER="1.14.x-xccl"
+    export AWS_OFI_NCCL_VER=$XCCL_VER
+
     AWS_CONFIG_OPTIONS="--prefix ${HPC_DIR}  \
       --with-libfabric=${HPC_DIR}            \
       --with-rccl=${ROCM_DIR}/rccl           \
@@ -89,7 +95,7 @@ else
     if [ "$WITH_XCCL" == "1" ]; then
         git clone https://github.com/ryanhankins/open-ofi-xccl.git
         cd open-ofi-xccl
-        git checkout v1.14.x-xccl
+        git checkout v${AWS_OFI_NCCL_VERSION}
         ###
         ### The following magic indicates during compile time that if
         ### HAVE_CUDA and HAVE_NEURON are not defined, that GPUDirect
@@ -143,3 +149,4 @@ make                                          && \
 make install                                  && \
 cd /tmp                                       && \
 rm -rf ${AWS_SRC_DIR}
+

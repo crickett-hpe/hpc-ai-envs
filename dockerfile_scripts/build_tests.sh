@@ -14,6 +14,11 @@ then
         CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
     fi
 
+    ARCH_TYPE=`uname -m`
+    if [[ ! -e $CUDA_DIR && -e /opt/nvidia/hpc_sdk ]]; then
+        CUDA_DIR="/opt/nvidia/hpc_sdk/Linux_${ARCH_TYPE}/${HPCSDK_VERSION}/cuda"
+    fi
+
     NCCL_VER="v2.15.0"
     NCCL_REPO="https://github.com/NVIDIA/nccl-tests.git"
     git clone --depth 1 --branch ${NCCL_VER} ${NCCL_REPO}

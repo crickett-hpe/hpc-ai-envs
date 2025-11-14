@@ -33,6 +33,9 @@ CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
 CRAY_LIBCXI_DIR ?= "/usr"
 NGC_VERSION ?= "25.06"
 LIBFABRIC_VERSION ?= "2.2.0"
+NCCL_VERSION ?= "2.28.3"
+AWS_VERSION ?= "1.16.3"
+XCCL_VERSION ?= "1.14.x-xccl"
 
 # If the user doesn't explicitly pass in a value for BUILD_SIF, then
 # default it to 1 if singularity is in the PATH
@@ -183,6 +186,9 @@ build-pytorch-ngc:
 		--build-arg "WITH_HOROVOD=$(WITH_HOROVOD)" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
 		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
+		--build-arg "HPC_NCCL_VERSION=$(NCCL_VERSION)" \
+		--build-arg "AWS_VERSION=$(AWS_VERSION)" \
+		--build-arg "XCCL_VERSION=$(XCCL_VERSION)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		.
 	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
@@ -225,7 +231,7 @@ build-user-spec-ngc:
 	@echo "USER_NGC_IMAGE_HPC: $(USER_NGC_IMAGE_HPC)"
 	@echo "USER_NGC_IMAGE_SS: $(USER_NGC_IMAGE_SS)"
 	@echo "USER_NGC_IMAGE_SIF: $(USER_NGC_IMAGE_SIF)"
-	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
+	docker build --no-cache -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
@@ -235,6 +241,9 @@ build-user-spec-ngc:
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_NGC_BASE_IMAGE)" \
 		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
+		--build-arg "HPC_NCCL_VERSION=$(NCCL_VERSION)" \
+		--build-arg "AWS_VERSION=$(AWS_VERSION)" \
+		--build-arg "XCCL_VERSION=$(XCCL_VERSION)" \
 		-t $(USER_NGC_IMAGE_HPC)\
 		.
 ifneq ($(HPC_LIBS_DIR),)
@@ -397,6 +406,8 @@ build-pytorch-rocm:
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
 		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
+		--build-arg "AWS_VERSION=$(AWS_VERSION)" \
+		--build-arg "XCCL_VERSION=$(XCCL_VERSION)" \
 		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		.
 ifeq "$(BUILD_SIF)" "1"
@@ -427,6 +438,8 @@ build-user-spec-rocm:
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_ROCM_BASE_IMAGE)" \
 		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
+		--build-arg "AWS_VERSION=$(AWS_VERSION)" \
+		--build-arg "XCCL_VERSION=$(XCCL_VERSION)" \
 		-t $(USER_ROCM_IMAGE_HPC)\
 		.
 ifeq "$(BUILD_SIF)" "1"
