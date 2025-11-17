@@ -248,12 +248,14 @@ ifneq ($(HPC_LIBS_DIR),)
         endif
         ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(USER_NGC_IMAGE_SS)"
-	    make build-sif TARGET_TAG="$(USER_NGC_IMAGE_SS)" TARGET_NAME="$(USER_NGC_IMAGE_SIF)"
+	    make build-sif TARGET_TAG="$(USER_NGC_IMAGE_SS)" \
+                TARGET_NAME="$(shell echo "$(USER_NGC_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-ss-',g)"
         endif
 else
         ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(USER_NGC_IMAGE_HPC)"
-	    make build-sif TARGET_TAG="$(USER_NGC_IMAGE_HPC)" TARGET_NAME="$(USER_NGC_IMAGE_SIF)"
+	    make build-sif TARGET_TAG="$(USER_NGC_IMAGE_HPC)" \
+	        TARGET_NAME="$(shell echo "$(USER_NGC_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-hpc-',g)"
         endif
 endif
 
@@ -431,7 +433,8 @@ build-user-spec-rocm:
 		.
 ifeq "$(BUILD_SIF)" "1"
 	    @echo "BUILD_SIF: $(USER_ROCM_IMAGE_HPC)"
-	    make build-sif TARGET_TAG="$(USER_ROCM_IMAGE_HPC)" TARGET_NAME="$(USER_ROCM_IMAGE_SIF)"
+	    make build-sif TARGET_TAG="$(USER_ROCM_IMAGE_HPC)" \
+                TARGET_NAME="$(shell echo "$(USER_ROCM_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-hpc-',g)"
 endif
 
 
