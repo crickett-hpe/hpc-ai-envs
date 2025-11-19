@@ -1,11 +1,116 @@
 ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} as source
+
+FROM ubuntu:22.04 AS shrink_rocm
+
+RUN echo "--- INFO: Stage 1: Copying large ROCm and Conda directories from source image. This may take several minutes. Please be patient. ---"
+
+###
+###  These are the three directories that provide the basis
+###  of an AMD ROCm 6.x container image.  So, copy these
+###  three directories to a clean ubuntu image. Some big chunks
+###  we're leaving behind are /opt/ompi (we're going to build
+###  our own) and 20GB worth of /var/lib/jenkins which nobody
+###  needs in a runtime container.
+###
+COPY --from=source /opt/amdgpu /opt/amdgpu
+COPY --from=source /opt/rocm /opt/rocm
+COPY --from=source /opt/conda /opt/conda
+
+RUN echo "--- INFO: Directory copy complete. Proceeding with cleanup and optimization. ---"
+
+###
+###  Now, lets clan up all the non-essential conda packages that
+###  may be installed, or downloaded into the AMD ROCm image that
+###  we don't need in our final, runtime image.
+###
+
+ENV PATH="/opt/conda/bin:/usr/bin:/bin"
+
+RUN echo "Cleaning up Conda environment..." && \
+    # This removes the 4.2GB+ package cache and other cruft.
+    conda clean --all -y && \
+    \
+    echo "Removing unnecessary large libraries and build tools..." && \
+    # Remove large ROCm library.  hipblaslt is over 19GB
+    rm -rf /opt/rocm/lib/hipblaslt
+
+###
+###  Now, our clean ubuntu image has the three directories we need,
+###  but it also has dirty layers that still include the pruned conda
+###  and hipblaslt filesystem data.  So, we grab another pristine
+###  Ubuntu image, and copy only the cleaned up rocm and conda
+###  subtrees.
+###
+FROM ubuntu:22.04 AS flatten_rocm
+
+RUN echo "--- INFO: Stage 2: Copying large ROCm and Conda directories from shrink_rocm image. This may take several minutes. Please be patient. ---"
+
+COPY --from=shrink_rocm /opt/amdgpu /opt/amdgpu
+COPY --from=shrink_rocm /opt/rocm /opt/rocm
+COPY --from=shrink_rocm /opt/conda /opt/conda
+
+RUN echo "--- INFO: Directory copy complete. Proceeding with cleanup and optimization. ---"
+
+###
+###  Since all we did was copy the filesystem data from the original ROCm image,
+###  we also need to copy the environment that initially comes with the ROCm image.
+###  The following ENV variables come from scraping the original ROCm container:
+###
+###     docker run -it --rm \
+###         rocm/pytorch:rocm6.3.4_ubuntu22.04_py3.10_pytorch_release_2.4.0 env |\
+###          tr -d '\r' |sed 's/^/ENV /' | sed 's/=/="/' | sed 's/$/\"/'|sort
+###
+ENV ANACONDA_PYTHON_VERSION="3.10"
+ENV BUILD_ENVIRONMENT="pytorch-linux-jammy-rocm6.3.4-py3.10"
+ENV DEBIAN_FRONTEND="noninteractive"
+ENV HSA_FORCE_FINE_GRAIN_PCIE="1"
+ENV http_proxy="http://hpeproxy.its.hpecorp.net:80"
+ENV HTTP_PROXY="http://hpeproxy.its.hpecorp.net:80"
+ENV https_proxy="http://hpeproxy.its.hpecorp.net:443"
+ENV HTTPS_PROXY="http://hpeproxy.its.hpecorp.net:443"
+ENV INSTALLED_DB="yes"
+ENV INSTALLED_PROTOBUF="yes"
+ENV INSTALLED_VISION="yes"
+ENV LANG="C.UTF-8"
+ENV LC_ALL="C.UTF-8"
+ENV LD_LIBRARY_PATH="/opt/rocm/lib:/usr/local/lib:/opt/amdgpu/lib/x86_64-linux-gnu:/opt/rocm/hip/lib"
+ENV MAGMA_HOME="/opt/rocm/magma"
+ENV MAX_JOBS="32"
+ENV no_proxy="localhost,127.0.0.1,.us.cray.com,.americas.cray.com,.dev.cray.com,.eag.rdlabs.hpecorp.net,github.hpe.com,jira-pro.its.hpecorp.net,hpc.amslabs.hpecorp.net"
+ENV NO_PROXY="localhost,127.0.0.1,.us.cray.com,.americas.cray.com,.dev.cray.com,.eag.rdlabs.hpecorp.net,github.hpe.com,jira-pro.its.hpecorp.net,hpc.amslabs.hpecorp.net"
+ENV PATH="/opt/cache/bin:/opt/rocm/llvm/bin:/opt/rocm/opencl/bin:/opt/rocm/hip/bin:/opt/rocm/hcc/bin:/opt/rocm/bin:/opt/conda/envs/py_3.10/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ENV PYTORCH_ROCM_ARCH="gfx908;gfx90a;gfx1030;gfx1100;gfx1101;gfx940;gfx941;gfx942;gfx1200;gfx1201"
+ENV PYTORCH_TESTING_DEVICE_ONLY_FOR="cuda"
+ENV PYTORCH_TEST_WITH_ROCM="1"
+ENV ROCM_PATH="/opt/rocm"
+ENV TERM="xterm"
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install a robust set of minimal system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    wget \
+    gnupg \
+    pciutils \
+    kmod \
+    libnuma1 \
+    libelf1 \
+    && rm -rf /var/lib/apt/lists/*
+
+###
+###  From here, using our clean, flattened Ubuntu image with the
+###  rocm and conda directories, and ROCm environment, we just do
+###  the rest of our docker building normally:
+FROM flatten_rocm
 
 RUN apt remove -y openmpi ucx || true
 #Let's remove existing /opt/ompi; and, link to our version.
 RUN rm -rf /opt/ompi                && \
     ln -s /container/hpc /opt/ompi  && \
-    rm /etc/apt/sources.list.d/rocm.list
+    rm /etc/apt/sources.list.d/rocm.list || true
 
 # Copy shell scripts as needed so that a simple change to one of those
 # scripts does not cause this image and all derived images from being
