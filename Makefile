@@ -36,6 +36,7 @@ LIBFABRIC_VERSION ?= "2.2.0"
 NCCL_VERSION ?= "2.28.3"
 AWS_VERSION ?= "1.16.3"
 XCCL_VERSION ?= "1.14.x-xccl"
+OMPI_VERSION ?= "5.0.8"
 
 # If the user doesn't explicitly pass in a value for BUILD_SIF, then
 # default it to 1 if singularity is in the PATH
@@ -189,6 +190,7 @@ build-pytorch-ngc:
 		--build-arg "HPC_NCCL_VERSION=$(NCCL_VERSION)" \
 		--build-arg "AWS_VERSION=$(AWS_VERSION)" \
 		--build-arg "XCCL_VERSION=$(XCCL_VERSION)" \
+		--build-arg "OMPI_VERSION=$(OMPI_VERSION)" \
 		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
 		.
 	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
@@ -244,6 +246,7 @@ build-user-spec-ngc:
 		--build-arg "HPC_NCCL_VERSION=$(NCCL_VERSION)" \
 		--build-arg "AWS_VERSION=$(AWS_VERSION)" \
 		--build-arg "XCCL_VERSION=$(XCCL_VERSION)" \
+		--build-arg "OMPI_VERSION=$(OMPI_VERSION)" \
 		-t $(USER_NGC_IMAGE_HPC)\
 		.
 ifneq ($(HPC_LIBS_DIR),)

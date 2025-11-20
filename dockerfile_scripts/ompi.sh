@@ -2,6 +2,8 @@
 
 set -x
 
+OMPI_VER_NUM=$1
+
 GPU_OPT=""
 if [ ! -d /opt/rocm ]
 then
@@ -27,8 +29,8 @@ OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default \
    --without-ucx --with-pmix=internal ${GPU_OPT}"
 
 # Install OMPI
-OMPI_VER=v5.0
-OMPI_VER_NUM=5.0.8
+OMPI_VER=v$(echo $OMPI_VER_NUM | awk -F '.' '{print$1"."print$2}')
+#OMPI_VER_NUM=5.0.8
 OMPI_CONFIG_OPTIONS=${OMPI_CONFIG_OPTIONS_VAR}
 OMPI_SRC_DIR=/tmp/openmpi-src
 OMPI_BASE_URL="https://download.open-mpi.org/release/open-mpi"
