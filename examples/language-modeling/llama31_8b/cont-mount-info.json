@@ -1,0 +1,802 @@
+[
+    {
+        "name": "/load_checkpoints",
+        "subdirs": [
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.self_attention.query_key_value.weight",
+                "elements": 24,
+                "dir_size": 21233768
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.self_attention.query_key_value.bias",
+                "elements": 24,
+                "dir_size": 1736
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.self_attention.dense.weight",
+                "elements": 24,
+                "dir_size": 7077992
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.self_attention.dense.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.post_attention_layernorm.weight",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.post_attention_layernorm.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.mlp.dense_h_to_4h.weight",
+                "elements": 24,
+                "dir_size": 28311656
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.mlp.dense_h_to_4h.bias",
+                "elements": 24,
+                "dir_size": 2312
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.mlp.dense_4h_to_h.weight",
+                "elements": 24,
+                "dir_size": 28311656
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.mlp.dense_4h_to_h.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.input_layernorm.weight",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.layers.input_layernorm.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.final_layernorm.weight",
+                "elements": 1,
+                "dir_size": 56
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.encoder.final_layernorm.bias",
+                "elements": 1,
+                "dir_size": 56
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.embedding.word_embeddings.weight",
+                "elements": 2,
+                "dir_size": 2420752
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.fp32_from_fp16.language_model.embedding.position_embeddings.weight",
+                "elements": 1,
+                "dir_size": 98312
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.self_attention.query_key_value.weight",
+                "elements": 24,
+                "dir_size": 21233768
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.self_attention.query_key_value.bias",
+                "elements": 24,
+                "dir_size": 1736
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.self_attention.dense.weight",
+                "elements": 24,
+                "dir_size": 7077992
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.self_attention.dense.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.post_attention_layernorm.weight",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.post_attention_layernorm.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.mlp.dense_h_to_4h.weight",
+                "elements": 24,
+                "dir_size": 28311656
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.mlp.dense_h_to_4h.bias",
+                "elements": 24,
+                "dir_size": 2312
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.mlp.dense_4h_to_h.weight",
+                "elements": 24,
+                "dir_size": 28311656
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.mlp.dense_4h_to_h.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.input_layernorm.weight",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.layers.input_layernorm.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.final_layernorm.weight",
+                "elements": 1,
+                "dir_size": 56
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.encoder.final_layernorm.bias",
+                "elements": 1,
+                "dir_size": 56
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.embedding.word_embeddings.weight",
+                "elements": 2,
+                "dir_size": 2420752
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg_sq.language_model.embedding.position_embeddings.weight",
+                "elements": 1,
+                "dir_size": 98312
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.self_attention.query_key_value.weight",
+                "elements": 24,
+                "dir_size": 21233768
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.self_attention.query_key_value.bias",
+                "elements": 24,
+                "dir_size": 1736
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.self_attention.dense.weight",
+                "elements": 24,
+                "dir_size": 7077992
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.self_attention.dense.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.post_attention_layernorm.weight",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.post_attention_layernorm.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.mlp.dense_h_to_4h.weight",
+                "elements": 24,
+                "dir_size": 28311656
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.mlp.dense_h_to_4h.bias",
+                "elements": 24,
+                "dir_size": 2312
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.mlp.dense_4h_to_h.weight",
+                "elements": 24,
+                "dir_size": 28311656
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.mlp.dense_4h_to_h.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.input_layernorm.weight",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.layers.input_layernorm.bias",
+                "elements": 12,
+                "dir_size": 584
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.final_layernorm.weight",
+                "elements": 1,
+                "dir_size": 56
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.encoder.final_layernorm.bias",
+                "elements": 1,
+                "dir_size": 56
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.embedding.word_embeddings.weight",
+                "elements": 2,
+                "dir_size": 2420764
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/optimizer.state.exp_avg.language_model.embedding.position_embeddings.weight",
+                "elements": 1,
+                "dir_size": 98312
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.self_attention.query_key_value.weight",
+                "elements": 24,
+                "dir_size": 10616936
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.self_attention.query_key_value.bias",
+                "elements": 24,
+                "dir_size": 872
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.self_attention.dense.weight",
+                "elements": 24,
+                "dir_size": 3539004
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.self_attention.dense.bias",
+                "elements": 12,
+                "dir_size": 296
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.post_attention_layernorm.weight",
+                "elements": 12,
+                "dir_size": 296
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.post_attention_layernorm.bias",
+                "elements": 12,
+                "dir_size": 296
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.mlp.dense_h_to_4h.weight",
+                "elements": 24,
+                "dir_size": 14155880
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.mlp.dense_h_to_4h.bias",
+                "elements": 24,
+                "dir_size": 1160
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.mlp.dense_4h_to_h.weight",
+                "elements": 24,
+                "dir_size": 14155880
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.mlp.dense_4h_to_h.bias",
+                "elements": 12,
+                "dir_size": 296
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.input_layernorm.weight",
+                "elements": 12,
+                "dir_size": 296
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.layers.input_layernorm.bias",
+                "elements": 12,
+                "dir_size": 296
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.final_layernorm.weight",
+                "elements": 1,
+                "dir_size": 32
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.encoder.final_layernorm.bias",
+                "elements": 1,
+                "dir_size": 32
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.embedding.word_embeddings.weight",
+                "elements": 2,
+                "dir_size": 1210384
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt/language_model.embedding.position_embeddings.weight",
+                "elements": 1,
+                "dir_size": 49160
+            },
+            {
+                "path": "/load_checkpoints/tmp-nemo-1x8x32x2x4-12layers--val_loss=6.91-step=300-consumed_samples=9504.0-last.ckpt",
+                "elements": 66,
+                "dir_size": 306116564
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/32x8x32x8x1_shared_long_bf16_s5657/mp_rank_07",
+                "elements": 1,
+                "dir_size": 38097420
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/32x8x32x8x1_shared_long_bf16_s5657/mp_rank_06",
+                "elements": 1,
+                "dir_size": 38097420
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/32x8x32x8x1_shared_long_bf16_s5657/mp_rank_05",
+                "elements": 1,
+                "dir_size": 38097420
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/32x8x32x8x1_shared_long_bf16_s5657/mp_rank_04",
+                "elements": 1,
+                "dir_size": 38097420
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/32x8x32x8x1_shared_long_bf16_s5657/mp_rank_03",
+                "elements": 1,
+                "dir_size": 38097420
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/32x8x32x8x1_shared_long_bf16_s5657/mp_rank_02",
+                "elements": 1,
+                "dir_size": 38097420
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/32x8x32x8x1_shared_long_bf16_s5657/mp_rank_01",
+                "elements": 1,
+                "dir_size": 38097420
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/32x8x32x8x1_shared_long_bf16_s5657/mp_rank_00",
+                "elements": 1,
+                "dir_size": 38097428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/32x8x32x8x1_shared_long_bf16_s5657",
+                "elements": 8,
+                "dir_size": 304779372
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_long_bf16_s5657/mp_rank_07",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_long_bf16_s5657/mp_rank_06",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_long_bf16_s5657/mp_rank_05",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_long_bf16_s5657/mp_rank_04",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_long_bf16_s5657/mp_rank_03",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_long_bf16_s5657/mp_rank_02",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_long_bf16_s5657/mp_rank_01",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_long_bf16_s5657/mp_rank_00",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_long_bf16_s5657",
+                "elements": 8,
+                "dir_size": 304747428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_500steps_bf16_s5657/mp_rank_07",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_500steps_bf16_s5657/mp_rank_06",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_500steps_bf16_s5657/mp_rank_05",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_500steps_bf16_s5657/mp_rank_04",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_500steps_bf16_s5657/mp_rank_03",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_500steps_bf16_s5657/mp_rank_02",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_500steps_bf16_s5657/mp_rank_01",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_500steps_bf16_s5657/mp_rank_00",
+                "elements": 1,
+                "dir_size": 38093428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug/1x8x32x8x1_shared_500steps_bf16_s5657",
+                "elements": 8,
+                "dir_size": 304747428
+            },
+            {
+                "path": "/load_checkpoints/fp8_debug",
+                "elements": 3,
+                "dir_size": 914274232
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.self_attention.query_key_value.weight",
+                "elements": 6144,
+                "dir_size": 169869792
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.self_attention.query_key_value.bias",
+                "elements": 768,
+                "dir_size": 15400
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.self_attention.dense.weight",
+                "elements": 6144,
+                "dir_size": 56623392
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.self_attention.dense.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.post_attention_layernorm.weight",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.post_attention_layernorm.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.mlp.dense_h_to_4h.weight",
+                "elements": 6144,
+                "dir_size": 226493512
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.mlp.dense_h_to_4h.bias",
+                "elements": 768,
+                "dir_size": 18472
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.mlp.dense_4h_to_h.weight",
+                "elements": 6144,
+                "dir_size": 226493396
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.mlp.dense_4h_to_h.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.input_layernorm.weight",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.layers.input_layernorm.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.final_layernorm.weight",
+                "elements": 8,
+                "dir_size": 72
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.encoder.final_layernorm.bias",
+                "elements": 8,
+                "dir_size": 72
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.embedding.word_embeddings.weight",
+                "elements": 64,
+                "dir_size": 2414608
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.fp32_from_fp16.language_model.embedding.position_embeddings.weight",
+                "elements": 64,
+                "dir_size": 98312
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.self_attention.query_key_value.weight",
+                "elements": 6144,
+                "dir_size": 169869800
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.self_attention.query_key_value.bias",
+                "elements": 768,
+                "dir_size": 15400
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.self_attention.dense.weight",
+                "elements": 6144,
+                "dir_size": 56623396
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.self_attention.dense.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.post_attention_layernorm.weight",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.post_attention_layernorm.bias",
+                "elements": 768,
+                "dir_size": 6188
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.mlp.dense_h_to_4h.weight",
+                "elements": 6144,
+                "dir_size": 226493416
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.mlp.dense_h_to_4h.bias",
+                "elements": 768,
+                "dir_size": 18472
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.mlp.dense_4h_to_h.weight",
+                "elements": 6144,
+                "dir_size": 226493472
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.mlp.dense_4h_to_h.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.input_layernorm.weight",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.layers.input_layernorm.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.final_layernorm.weight",
+                "elements": 8,
+                "dir_size": 72
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.encoder.final_layernorm.bias",
+                "elements": 8,
+                "dir_size": 72
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.embedding.word_embeddings.weight",
+                "elements": 64,
+                "dir_size": 2414616
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg_sq.language_model.embedding.position_embeddings.weight",
+                "elements": 64,
+                "dir_size": 98312
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.self_attention.query_key_value.weight",
+                "elements": 6144,
+                "dir_size": 169869832
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.self_attention.query_key_value.bias",
+                "elements": 768,
+                "dir_size": 15400
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.self_attention.dense.weight",
+                "elements": 6144,
+                "dir_size": 56623392
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.self_attention.dense.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.post_attention_layernorm.weight",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.post_attention_layernorm.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.mlp.dense_h_to_4h.weight",
+                "elements": 6144,
+                "dir_size": 226493592
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.mlp.dense_h_to_4h.bias",
+                "elements": 768,
+                "dir_size": 18472
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.mlp.dense_4h_to_h.weight",
+                "elements": 6144,
+                "dir_size": 226493448
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.mlp.dense_4h_to_h.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.input_layernorm.weight",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.layers.input_layernorm.bias",
+                "elements": 768,
+                "dir_size": 6184
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.final_layernorm.weight",
+                "elements": 8,
+                "dir_size": 72
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.encoder.final_layernorm.bias",
+                "elements": 8,
+                "dir_size": 72
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.embedding.word_embeddings.weight",
+                "elements": 64,
+                "dir_size": 2414612
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/optimizer.state.exp_avg.language_model.embedding.position_embeddings.weight",
+                "elements": 64,
+                "dir_size": 98312
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.self_attention.query_key_value.weight",
+                "elements": 6144,
+                "dir_size": 84934924
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.self_attention.query_key_value.bias",
+                "elements": 768,
+                "dir_size": 9256
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.self_attention.dense.weight",
+                "elements": 6144,
+                "dir_size": 28311832
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.self_attention.dense.bias",
+                "elements": 768,
+                "dir_size": 3112
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.post_attention_layernorm.weight",
+                "elements": 768,
+                "dir_size": 3112
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.post_attention_layernorm.bias",
+                "elements": 768,
+                "dir_size": 3112
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.mlp.dense_h_to_4h.weight",
+                "elements": 6144,
+                "dir_size": 113246480
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.mlp.dense_h_to_4h.bias",
+                "elements": 768,
+                "dir_size": 9256
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.mlp.dense_4h_to_h.weight",
+                "elements": 6144,
+                "dir_size": 113246480
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.mlp.dense_4h_to_h.bias",
+                "elements": 768,
+                "dir_size": 3112
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.input_layernorm.weight",
+                "elements": 768,
+                "dir_size": 3112
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.layers.input_layernorm.bias",
+                "elements": 768,
+                "dir_size": 3116
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.final_layernorm.weight",
+                "elements": 8,
+                "dir_size": 40
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.encoder.final_layernorm.bias",
+                "elements": 8,
+                "dir_size": 40
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.embedding.word_embeddings.weight",
+                "elements": 64,
+                "dir_size": 1207304
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0/language_model.embedding.position_embeddings.weight",
+                "elements": 64,
+                "dir_size": 49160
+            },
+            {
+                "path": "/load_checkpoints/ckpt4000-consumed_samples=0",
+                "elements": 67,
+                "dir_size": 2387226048
+            },
+            {
+                "path": "/load_checkpoints",
+                "elements": 3,
+                "dir_size": 3607616848
+            }
+        ]
+    }
+]

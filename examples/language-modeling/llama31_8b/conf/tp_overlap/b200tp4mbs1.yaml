@@ -1,0 +1,61 @@
+qkv_dgrad:
+  method: bulk
+  num_sm: ${oc.decode:${oc.env:QKV_DGRAD_SM,8}}
+  cga_size: 2
+  set_sm_margin: 0
+
+qkv_wgrad:
+  method: bulk
+  num_sm: ${oc.decode:${oc.env:QKV_WGRAD_SM,4}}
+  cga_size: 2
+  set_sm_margin: 0
+
+fc1_dgrad:
+  method: bulk
+  num_sm: ${oc.decode:${oc.env:FC1_DGRAD_SM,8}}
+  cga_size: 2
+  set_sm_margin: 0
+
+fc1_wgrad:
+  method: bulk
+  num_sm: ${oc.decode:${oc.env:FC1_WGRAD_SM,4}}
+  cga_size: 2
+  set_sm_margin: 0
+
+qkv_fprop:
+  method: ring_exchange
+  num_sm: 1
+  set_sm_margin: 0
+  atomic_gemm: 0
+
+proj_dgrad:
+  method: ring_exchange
+  num_sm: 1
+  set_sm_margin: 0
+  atomic_gemm: 0
+
+fc1_fprop:
+  method: ring_exchange
+  num_sm: 1
+  set_sm_margin: 0
+  atomic_gemm: 0
+
+fc2_dgrad:
+  method: ring_exchange
+  num_sm: 1
+  set_sm_margin: 0
+  atomic_gemm: 0
+
+proj_fprop:
+  method: ring_exchange
+  num_sm: 1
+  set_sm_margin: 0
+  atomic_gemm: 0
+  fp8_buf: ${oc.decode:${oc.env:PROJ_FPROP_FP8_BUF,0}}
+
+fc2_fprop:
+  method: ${oc.decode:${oc.env:FC2_FPROP_METHOD,ring_exchange}}
+  num_sm: ${oc.decode:${oc.env:FC2_FPROP_SM,1}}
+  set_sm_margin: 1
+  atomic_gemm: 0
+  fp8_buf: ${oc.decode:${oc.env:FC2_FPROP_FP8_BUF,0}}

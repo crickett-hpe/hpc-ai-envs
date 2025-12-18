@@ -1,0 +1,7 @@
+git+https://github.com/mlcommons/logging.git@5.1.0-rc3
+git+https://github.com/NVIDIA/mlperf-common.git@b86d175a05849d650a8ff69c1e2c37b9f4e61d51
+transformers==4.46.1
+blobfile==3.0.0
+prettytable==3.11.0
+# WAR for MultiStorageClient
+multi-storage-client<0.26.0

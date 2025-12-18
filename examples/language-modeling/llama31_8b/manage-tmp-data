@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# Copyright (c) 2022-2024, NVIDIA CORPORATION. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#           http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+usage_string="\
+usage: ${0} /PATH/TO/REMOTE/INPUT.tar /tmp/PATH/TO/LOCAL/TMPDIR MD5SUM
+     Checks whether /tmp/PATH/TO/LOCAL/TMPDIR exists and is valid
+     If so, does nothing
+     if not, creates the dir, copies and untars the contents of INPUT.tar there
+"
+
+# check if user just wants help:
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    echo "${usage_string}"
+    exit 0
+fi
+
+# need three arguments:
+if [[ "$#" -ne "3" ]]; then
+    echo "${usage_string}"
+    exit 1
+fi
+
+# Make everything readable and writable by everyone this. is a temporary cache
+# on local /scratch disk, so other people on other teams need to be able to
+# delete it
+umask 0
+
+remote_tarfile="${1}"
+local_tmpdir="${2}"
+valid_md5sum="${3}"
+
+echo "syncronizing ${remote_tarfile} to ${local_tmpdir} so both will have md5sum ${valid_md5sum}"
+
+if [[ ! -f "${remote_tarfile}" ]]; then
+    echo "can't find file ${remote_tarfile}!"
+    echo "${usage_string}"
+    exit 1
+fi
+
+# first check for valid local copy:
+if [[ -d "${local_tmpdir}" ]]; then
+    echo "${local_tmpdir} exists"
+    dirmd5="$(cd "${local_tmpdir}"; find . -type f | xargs stat --format="%n %s %y" | LC_ALL=C sort | md5sum | cut -f1 -d' ')"
+    if [[ "x${dirmd5}" != "x${valid_md5sum}" ]]; then
+	echo "MD5 sum is $dirmd5 instead of $valid_md5sum"
+	(cd $local_tmpdir; ls -l; find . -type f | xargs stat --format="%n %s %y" | LC_ALL=C sort)
+        # the contents of the tmpdir are wrong, so delete tmpdir and all
+        # contents:
+        rm -r "${local_tmpdir}"
+    else
+        # directory exists and seems valid!
+	echo "already synchronized!"
+        exit 0
+    fi
+fi
+
+# if directory didn't already exist, or was found invalid above: reconstruct from tarfile
+if [[ ! -d "${local_tmpdir}" ]]; then
+    mkdir --parents "${local_tmpdir}"
+    # somewhat faster copy of file over network port
+    time dd bs=4M if="${remote_tarfile}" of="${local_tmpdir}/llm.c4data.tar" oflag=direct
+    time tar --directory="${local_tmpdir}" --extract --file "${local_tmpdir}/llm.c4data.tar"
+    rm "${local_tmpdir}/llm.c4data.tar"
+else
+    echo "WARNING: ${0} reached a condition it should never reach"
+    echo "${local_tmpdir} exists and looks valid but script continued to try to create it anyway?"
+fi
+
+ls "${local_tmpdir}"

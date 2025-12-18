@@ -1,0 +1,17 @@
+key,type,relative_path,num_files,num_bytes
+PREPROC_DATA,file,LICENSE.txt,1,20591
+PREPROC_DATA,file,NOTICE.txt,1,620
+PREPROC_DATA,file,c4-train.en_6_text_document.bin,1,83976774280
+PREPROC_DATA,file,c4-train.en_6_text_document.idx,1,912172262
+PREPROC_DATA,file,c4-validation-91205-samples.en_text_document.bin,1,166568364
+PREPROC_DATA,file,c4-validation-91205-samples.en_text_document.idx,1,1824142
+PREPROC_DATA,file,llama-3-1-8b-preprocessed-c4-dataset.md5,1,389
+PREPROC_DATA,file,tokenizer/LICENSE,1,7627
+PREPROC_DATA,file,tokenizer/README.md,1,40883
+PREPROC_DATA,file,tokenizer/USE_POLICY.md,1,4691
+PREPROC_DATA,file,tokenizer/llama-3-1-8b-tokenizer.md5,1,908
+PREPROC_DATA,file,tokenizer/special_tokens_map.json,1,73
+PREPROC_DATA,file,tokenizer/tokenizer.json,1,9085658
+PREPROC_DATA,file,tokenizer/tokenizer_config.json,1,50500
+PREPROC_DATA,dir,tokenizer,7,9190340
+PREPROC_DATA,dir,.,14,85066550988

@@ -1,0 +1,211 @@
+# Optional field is ignored if it's value can't be found
+defaults:
+  - optional tp_overlap@model.ub_tp_comm_overlap_cfg: ${oc.env:GPU_ARCH,h100}tp${oc.env:TENSOR_MODEL_PARALLEL}mbs${oc.env:MICRO_BATCH_SIZE}
+
+
+proxy_gbs: ${oc.decode:${oc.env:PROXY_GBS,${model.global_batch_size}}}
+is_proxy_run: ${neq:${proxy_gbs},${model.global_batch_size}}
+skip_evals: ${oc.decode:${oc.env:SKIP_EVALS,${floor:${add:${multiply:0.0026,${model.global_batch_size}},12}}}}
+default_val_check_interval: ${ceil_div:${if:${eq:${model.base_config},'405b'},18432,12288},${model.global_batch_size}}
+
+trainer:
+  devices: ${oc.decode:${oc.env:DGXNGPU,8}}
+  num_nodes: ${oc.decode:${oc.env:DGXNNODES,1}}
+  precision: bf16
+  max_steps: ${oc.decode:${oc.env:MAX_STEPS,${ceil_div:1382400000,${model.global_batch_size}}}}
+  max_epochs: 1
+  log_every_n_steps: ${oc.decode:${oc.env:LOG_EVERY_N_STEPS,1}}
+
+  # Evaluation policy:
+  # https://github.com/mlcommons/training_policies/blob/master/training_rules.adoc#94-quality-measure
+  # Every 18432 sequences; CEIL(18432 / global_batch_size) * global_batch_size steps if 18432 is not divisible by GBS. Skipping first FLOOR(0.0026*global_batch_size+12) evaluations
+  # val_check_interval is the number of steps between evaluations. We start with artificially large val_check_interval and then we overwrite it to skip the first FLOOR(0.0026*global_batch_size+12) evaluations.
+  val_check_interval: ${oc.decode:${oc.env:VAL_CHECK_INTERVAL,${multiply:${add:${skip_evals},1},${default_val_check_interval}}}}
+
+  limit_val_batches: ${oc.decode:${oc.env:LIMIT_VAL_BATCHES,${ceil_div:${oc.decode:${oc.env:VAL_SAMPLES,5760}},${model.global_batch_size}}}}
+  
+  limit_test_batches: ${oc.decode:${oc.env:LIMIT_TEST_BATCHES,1}}
+  limit_train_batches: ${oc.decode:${oc.env:LIMIT_TRAIN_BATCHES,null}}
+  enable_progress_bar: ${oc.decode:${oc.env:ENABLE_PROGRESS_BAR,False}}
+  num_sanity_val_steps: 0
+
+exp_manager:
+  explicit_log_dir: '/results'
+  resume_if_exists: ${oc.decode:${oc.env:ENABLE_RERUNS,0}}
+  create_checkpoint_callback: ${oc.decode:${oc.env:ENABLE_RERUNS,0}}
+  checkpoint_callback_params:
+    save_top_k: 1
+    mode: max  # we don't really want to save those checkpoints
+    every_n_epochs: 0
+    save_last: True
+  log_step_timing: True
+  create_tensorboard_logger: ${oc.decode:${oc.env:CREATE_TENSORBOARD_LOGGER,False}}
+  log_global_rank_0_only: True
+
+model:
+  mcore_gpt: True
+  name: megatron_gpt_full_te_layer_autocast
+  micro_batch_size: ${oc.decode:${oc.env:MICRO_BATCH_SIZE}} # limited by GPU memory
+
+  tensor_model_parallel_size: ${oc.decode:${oc.env:TENSOR_MODEL_PARALLEL}} # intra-layer model parallelism
+  pipeline_model_parallel_size: ${oc.decode:${oc.env:PIPELINE_MODEL_PARALLEL}} # inter-layer model parallelism
+  virtual_pipeline_model_parallel_size: ${oc.decode:${oc.env:INTERLEAVED_PIPELINE,12}} # interleaved pipeline
+  context_parallel_size: ${oc.decode:${oc.env:CONTEXT_PARALLEL,4}} # context parallel size
+  expert_model_parallel_size: ${oc.decode:${oc.env:EXPERT_PARALLEL,1}} # expert parallel size
+
+  # Global batch size is being calculated based on other env vars
+  # GBS = MINIBS * ((DGXNGPU * DGXNNODES) // (TENSOR_MODEL_PARALLEL * PIPELINE_MODEL_PARALLEL * CONTEXT_PARALLEL))
+  #global_batch_size: "${multiply:
+  #                      ${oc.decode:${oc.env:MINIBS}},
+  #                      ${floor_div:
+  #                        ${multiply:
+  #                          ${trainer.devices},
+  #                          ${trainer.num_nodes}
+  #                          },
+  #                        ${multiply:
+  #                          ${model.tensor_model_parallel_size},
+  #                          ${model.pipeline_model_parallel_size}
+  #                          }
+  #                        }
+  #                      }
+  #                    "
+  global_batch_size: ${multiply:${oc.decode:${oc.env:MINIBS}},${floor_div:${multiply:${trainer.devices},${trainer.num_nodes}},${multiply:${multiply:${model.tensor_model_parallel_size},${model.pipeline_model_parallel_size}},${model.context_parallel_size}}}}
+
+  use_tp_pp_dp_mapping: ${oc.decode:${oc.env:TP_PP_DP_MAPPING,False}}
+  
+  base_config: ${oc.env:MODEL_SIZE,405b}
+  # overwrite configs
+  overwritten_attributes: 
+    num_layers: ${oc.decode:${oc.env:OVERWRITTEN_NUM_LAYERS,126}}
+    enable_cuda_graph: ${oc.decode:${oc.env:MCORE_CUDA_GRAPH,False}}
+    cuda_graph_scope: ${oc.decode:${oc.env:CUDA_GRAPH_SCOPE,${if:${eq:'1',${oc.env:FULL_CUDA_GRAPH,0}},'full_iteration','full'}}}
+  encoder_seq_length: 8192
+  overlap_p2p_comm: ${oc.decode:${oc.env:OVERLAP_P2P_COMM,True}} # Overlap p2p communication with computes. This argument is valid only when `virtual_pipeline_model_parallel_size` is larger than 1
+  batch_p2p_comm: ${oc.decode:${oc.env:BATCH_P2P_COMM,False}} # Batch consecutive inter-peer send/recv operations. This argument is valid only when `virtual_pipeline_model_parallel_size` is larger than 1
+
+  account_for_embedding_in_pipeline_split: ${oc.decode:${oc.env:ASYM_PP_EMBED,False}}
+  account_for_loss_in_pipeline_split: ${oc.decode:${oc.env:ASYM_PP_LOSS,False}}
+
+  external_cuda_graph: ${oc.decode:${oc.env:LAYER_CUDA_GRAPH,False}}
+
+  defer_embedding_wgrad_compute: ${oc.decode:${oc.env:DEFER_EMBEDDING_WGRAD_COMPUTE,False}}
+  wgrad_deferral_limit: ${oc.decode:${oc.env:WGRAD_DEFERRAL_LIMIT,0}}
+
+  tokenizer:
+    model: '/workspace/llm/nemo_tokenizer'
+
+  gradient_accumulation_fusion: ${oc.decode:${oc.env:GRAD_ACCUM_FUSION,True}} # Fuse weight gradient accumulation to GEMMs. Only used with pipeline parallelism and O2.
+  fused_single_qkv_rope: ${oc.decode:${oc.env:FUSED_QKV_ROPE,False}}
+  cross_entropy_loss_fusion: ${oc.decode:${oc.env:CROSS_ENTROPY_LOSS_FUSION,True}}
+  deterministic_mode: ${oc.decode:${oc.env:DETERMINISTIC_MODE,False}}
+
+  seed: ${oc.decode:${oc.env:SEED,1234}}
+  resume_from_checkpoint: ${oc.env:LOAD_CHECKPOINT,null}
+  dist_ckpt_format: torch_dist
+  dist_ckpt_parallel_load: ${oc.decode:${oc.env:DIST_CKPT_PARALLEL_LOAD,True}}
+  sync_batch_comm: ${oc.decode:${oc.env:SYNC_BATCH_COMM,False}} # Enable stream synchronization after each p2p communication between pipeline stages
+
+  activations_checkpoint_granularity: ${oc.decode:${oc.env:ACT_CKPT_GRANULARITY,null}} # 'selective' or 'full'
+  activations_checkpoint_method: ${oc.decode:${oc.env:ACT_CKPT_METHOD,null}} # 'uniform', 'block', not used with 'selective'
+  activations_checkpoint_num_layers: ${oc.decode:${oc.env:ACT_CKPT_NUM_LAYERS,null}} # not used with 'selective'
+  sequence_parallel: ${oc.decode:${oc.env:SEQ_PARALLEL,True}}
+
+  ## Transformer Engine
+  transformer_engine: ${oc.decode:${oc.env:TRANSFORMER_ENGINE,True}}
+  fp8: ${oc.decode:${oc.env:FP8,False}} # enables fp8 in TransformerLayer forward
+  fp8_hybrid: ${oc.decode:${oc.env:FP8_HYBRID,False}} # sets fp8_format = recipe.Format.HYBRID
+  fp8_recipe: ${oc.decode:${oc.env:FP8_RECIPE,tensorwise}}
+  fp8_amax_history_len: ${oc.decode:${oc.env:FP8_AMAX_HISTORY,1}} # Number of steps for which amax history is recorded per tensor
+  fp8_amax_compute_algo: ${oc.env:FP8_AMAX_ALGO,most_recent} # 'most_recent' or 'max'. Algorithm for computing amax from history
+  fp4: ${oc.decode:${oc.env:FP4,False}} # enables fp4 in TransformerLayer forward
+  fp4_recipe: ${oc.decode:${oc.env:FP4_RECIPE,nvfp4}}
+  reduce_amax: ${oc.decode:${oc.env:FP8_REDUCE_AMAX,True}} # Perform reduction to sync amax tensors across GPUs after every iteration
+  tp_only_amax_red: ${oc.decode:${oc.env:TP_ONLY_AMAX_RED,True}}
+  first_last_layers_bf16: ${oc.decode:${oc.env:FIRST_LAST_LAYERS_BF16,False}}
+  num_layers_at_start_in_bf16: ${oc.decode:${oc.env:NUM_LAYERS_AT_START_IN_BF16,0}}
+  num_layers_at_end_in_bf16: ${oc.decode:${oc.env:NUM_LAYERS_AT_END_IN_BF16,0}}
+  fp8_dot_product_attention: ${oc.decode:${oc.env:FP8_DPA,False}}
+
+  use_te_rng_tracker: True
+  use_transformer_engine_op_fuser: ${oc.decode:${oc.env:USE_TE_OPS,False}}
+  cross_entropy_fusion_impl: ${oc.decode:${oc.env:CE_FUSION_IMPL,'native'}}
+  ub_tp_comm_overlap: ${oc.decode:${oc.env:TP_COMM_OVERLAP,False}}
+  tp_comm_overlap_ag: ${oc.decode:${oc.env:MC_TP_OVERLAP_AG,False}}
+  tp_comm_overlap_rs: ${oc.decode:${oc.env:MC_TP_OVERLAP_RS,False}}
+  # Use userbuffer backend to overlap tensor-parallel communications with computes.
+  # This feature is only available with Transformer Engine and squence parallelism enabled and, currently, supports only GPT models.
+
+  nccl_communicator_config_path: ${oc.decode:${oc.env:NCCL_CFG_PATH,null}}
+  sharp: ${oc.decode:${oc.env:SHARP,False}}
+
+  data:
+    index_mapping_dir: '/npy_index' # path to save index mapping .npy files, by default will save in the same location as data_prefix
+    splits_string: null
+    validation_drop_last: False # Set to false if the last partial validation samples is to be consumed
+    pad_samples_to_global_batch_size: True # Set to True if you want to pad the last partial batch with -1's to equal global batch size
+    shuffle_documents: False # Set to False to disable documents shuffling. Sample index will still be shuffled
+    legacy_dataset: ${oc.decode:${oc.env:LEGACY_DATASET,True}} # Use the legacy NeMo dataset path instead of MCore
+    delay_data_init: ${model.data.legacy_dataset}
+    delay_data_mmap: ${model.data.delay_data_init} # Set to True to delay the mmap creation of the dataset .bin files. Default is False
+    no_seqlen_plus_one_input_tokens: ${oc.decode:${oc.env:CUSTOM_INPUT_PIPELINE,True}} # Set to True to disable fetching (sequence length + 1) input tokens, instead get (sequence length) input tokens and mask the last token
+    exchange_indices_distributed: ${oc.decode:${oc.env:EXCHANGE_INDICES_DISTRIBUTED,True}} # Set to True to exchange indices via torch.distributed instead of filesystem
+    mock_dataset: ${oc.decode:${oc.env:MOCK_DATASET,False}} # use MockDataset in case if the dataset is not yet there.
+    mock_tokenizer_vocab_size: ${oc.decode:${oc.env:MOCK_TOKENIZER_VOCAB_SIZE,32000}} # use MockTokenizer in case if the tokenizer is not yet there.
+  # The following lines implement this logic:
+  #os.env.get('LR', 
+  #           2e-5 if os.env.get('PROXY_GBS', os.env['GLOBAL_BATCH_SIZE']) < 3600
+  #           else 3e-5)
+  # Explanation: LR and MIN_LR env variables take precedense over all default values
+  # If LR is undefined and if PROXY_GBS < 3600 then lr=2e-5, else lr=3e-5
+  optim:
+    overlap_grad_reduce: ${oc.decode:${oc.env:OVERLAP_GRAD_REDUCE,True}}
+    overlap_param_gather: ${oc.decode:${oc.env:OVERLAP_PARAM_GATHER,True}}
+    align_param_gather:  ${oc.decode:${oc.env:ALIGN_PARAM_GATHER,False}}
+    use_distributed_optimizer: ${oc.decode:${oc.env:USE_DIST_OPTIMIZER,True}}
+    bucket_size: ${oc.decode:${oc.env:BUCKET_SIZE,134217728}}
+    fp8_param_gather: ${oc.decode:${oc.env:FP8_PARAM_GATHER,False}}
+    overlap_param_gather_with_optim_step: ${oc.decode:${oc.env:OVERLAP_PARAM_GATHER_WITH_OPTIM_STEP,False}}
+    lr: ${oc.decode:${oc.env:LR,${div:${multiply:0.00008,${model.global_batch_size}},1152}}}
+    sched:
+      min_lr: ${oc.decode:${oc.env:MIN_LR,${div:${model.optim.lr},10.0}}}
+      warmup_steps: ${oc.decode:${oc.env:WARMUP_STEPS,${div:9216000,${model.global_batch_size}}}}
+      max_steps_for_lr_sched: ${oc.decode:${oc.env:MAX_STEPS_FOR_LR_SCHED,${div:1382400000,${model.global_batch_size}}}}  # overwritten in run_and_time
+    lock_timeout: ${oc.decode:${oc.env:OPTIM_LOCK_TIMEOUT,null}}
+
+  gc_interval_train: ${oc.decode:${oc.env:GC_TRAIN,1000}}
+  gc_interval_valid: ${oc.decode:${oc.env:GC_VALID,1000}}
+
+  nsys_profile:
+    enabled: ${oc.decode:${oc.env:PROFILE,False}}
+    start_step: ${oc.decode:${oc.env:PROFILE_START_STEP,10}}
+    end_step: ${oc.decode:${oc.env:PROFILE_END_STEP,10}}
+    ranks: [0]
+    gen_shape: False
+    nvtx_ranges: ${oc.decode:${oc.env:BREAKDOWN,False}} # Set to True to enable NVTX profiling in both Nemo & MCore
+
+  custom:
+    log_metrics: ${oc.decode:${oc.env:LOG_METRICS,NEMO}} # options: NEMO, DELTA, OFF
+    init_global_step: ${oc.decode:${oc.env:INIT_GLOBAL_STEP,0}} # starts with 0 steps
+    target_log_ppl: ${oc.decode:${oc.env:TARGET_LOG_PPL,5.6}} 
+    use_distributed_checkpointing: ${oc.decode:${oc.env:USE_DIST_CHECKPOINTING,1}}  # Use 1: save Distributed Ckpt, 0: save Default Ckpt
+    run_warmup_on_synth_data: ${oc.decode:${oc.env:RUN_WARMUP_ON_SYNTH_DATA,1}} 
+    reset_fp8_stats_after_warmup: ${oc.decode:${oc.env:RESET_FP8_STATS_AFTER_WARMUP,1}} 
+    pre_validate: ${oc.decode:${oc.env:PRE_VALIDATE,0}} # 1 to run validation before training. Note: validation is done outside timed region. Might affect first training step time and fill data buffers.
+    override_zero_consumed_samples: ${oc.decode:${oc.env:OVERRIDE_ZERO_CONSUMED_SAMPLES,${if:${is_proxy_run},0,1}}} # if True, will set consumed samples to `init_global_step` * GBS
+    force_success_status: ${oc.decode:${oc.env:FORCE_SUCCESS_STATUS,0}} # If True, sets the MLLOG status to SUCCESS at run_stop even if target accuracy was not reached so the dryrun report parsing works
+    warmup_train_steps: ${oc.decode:${oc.env:WARMUP_TRAIN_STEPS,2}} # number of training warmup steps, no need to compare this to limit_train_batches
+    warmup_validation_steps: ${min:${oc.decode:${oc.env:WARMUP_VALIDATION_STEPS,2}},${trainer.limit_val_batches}} # number of validation warmup steps
+    extend_run_evals: ${oc.decode:${oc.env:EXTEND_RUN_EVALS,${if:${eq:'1',${oc.env:MLPERF_POWER_TRAIN_AFTER_RUN_STOP,0}},2,0}}} # number of extra eval intervals after converging
+    disable_nemo_logs: ${oc.decode:${oc.env:DISABLE_NEMO_LOGS,True}}
+
+misc:
+  print_config: ${oc.decode:${oc.env:PRINT_CONFIG,False}} # Set to True to print Nemo2.0 artifact config
+  memory_profiler:
+    enable: ${oc.decode:${oc.env:ENABLE_MEMORY_PROFILER,False}}
+    file_prefix: ${oc.env:MEMORY_PROFILE_FILENAME,memdump}
+    max_entries: ${oc.decode:${oc.env:MEMORY_PROFILE_MAX_ENTRIES,1000000}}
+    rank_0_only: ${oc.decode:${oc.env:MEMORY_PROFILE_RANK_0_ONLY,True}}
+    start_location: ${oc.env:MEMORY_PROFILE_START_LOCATION,init}
+    end_location: ${oc.env:MEMORY_PROFILE_END_LOCATION,train_start}
+    force_oom_before_stop: ${oc.decode:${oc.env:FORCE_OOM_BEFORE_STOP,False}}
+    possible_oom: ${oc.decode:${oc.env:MEMORY_PROFILE_POSSIBLE_OOM,False}}
