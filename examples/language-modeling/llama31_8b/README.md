@@ -27,7 +27,7 @@ make -C ../../.. BUILD_SIF=0 WITH_NCCL=1 NGC_VERSION=<version> build-pytorch-ngc
 ```
 If successful, this build will create the docker image: `localhost/cray/ngc-<version>-py3-pt-hpc:<tag>`
 
-Update the Dockerfile with newly created NGC Pytorch image as a base image.
+Update the Dockerfile with the newly created NGC Pytorch image as the base image.
 
 ```bash
 diff --git a/HPE/benchmarks/llama3_8b/implementations/nemo-x86_64/Dockerfile b/HPE/benchmarks/llama3_8b/implementations/nemo-x86_64/Dockerfile
@@ -51,7 +51,7 @@ Replace `<docker/registry>` with your container registry and build:
 docker build -f Dockerfile -t <docker/registry>/mlperf-nv-hpc:llama31_8b-pyt .
 docker save -o mlperf-nv-hpc-llama31-8b-pyt.tar <docker/registry>/mlperf-nv-hpc:llama31_8b-pyt
 env APPTAINER_NOHTTPS=true NAMESPACE="" singularity build mlperf-nv-hpc-llama31-8b-pyt.sif docker-archive://mlperf-nv-hpc-llama31-8b-pyt.tar
-export CONT=mlperf-nv-hpc-llama31-8b-pyt.sif
+export CONT=<path/to/singularity_image>
 ```
 
 make sure that container is accessible on your Slurm system.
@@ -109,7 +109,7 @@ The LLama3.1 8B is trained from scratch and is not using a checkpoint.
 
 ## 4. Launch training
 
-For training, we use Slurm with the Pyxis extension, and Slurm's MPI support to run our container.
+For training, we use Slurm with Apptainer, and Slurm's MPI support to run our container.
 
 Navigate to the directory where `run.sub` is stored.
 
