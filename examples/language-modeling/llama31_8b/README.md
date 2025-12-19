@@ -30,7 +30,7 @@ If successful, this build will create the docker image: `localhost/cray/ngc-<ver
 Replace `<docker/registry>` with your container registry and build:
 
 ```bash
-docker build --build-arg "FROM_IMAGE_NAME=localhost/cray/ngc-25.10-py3-pt-hpc:2a36fef" --file Dockerfile --tag <docker/registry>/mlperf-nv-hpc:llama31_8b-pyt .
+docker build --build-arg "FROM_IMAGE_NAME=localhost/cray/ngc-<version>-py3-pt-hpc:<tag>" --file Dockerfile --tag <docker/registry>/mlperf-nv-hpc:llama31_8b-pyt .
 docker save -o mlperf-nv-hpc-llama31-8b-pyt.tar <docker/registry>/mlperf-nv-hpc:llama31_8b-pyt
 env APPTAINER_NOHTTPS=true NAMESPACE="" singularity build mlperf-nv-hpc-llama31-8b-pyt.sif docker-archive://mlperf-nv-hpc-llama31-8b-pyt.tar
 export CONT=<path/to/singularity_image>
