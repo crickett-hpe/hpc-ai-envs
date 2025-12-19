@@ -27,28 +27,10 @@ make -C ../../.. BUILD_SIF=0 WITH_NCCL=1 NGC_VERSION=<version> build-pytorch-ngc
 ```
 If successful, this build will create the docker image: `localhost/cray/ngc-<version>-py3-pt-hpc:<tag>`
 
-Update the Dockerfile with the newly created NGC Pytorch image as the base image.
-
-```bash
-diff --git a/HPE/benchmarks/llama3_8b/implementations/nemo-x86_64/Dockerfile b/HPE/benchmarks/llama3_8b/implementations/nemo-x86_64/Dockerfile
-index 1984ec2a..86dcecbb 100644
---- a/HPE/benchmarks/llama3_8b/implementations/nemo-x86_64/Dockerfile
-+++ b/HPE/benchmarks/llama3_8b/implementations/nemo-x86_64/Dockerfile
-@@ -18,7 +18,8 @@
- # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- # DEALINGS IN THE SOFTWARE.
- 
--ARG FROM_IMAGE_NAME=nvcr.io/nvidia/pytorch:25.08-py3
-+ARG FROM_IMAGE_NAME=localhost/cray/ngc-<version>-py3-pt-hpc:<tag>
- FROM ${FROM_IMAGE_NAME}
- 
- # Document build setup
-```
-
 Replace `<docker/registry>` with your container registry and build:
 
 ```bash
-docker build -f Dockerfile -t <docker/registry>/mlperf-nv-hpc:llama31_8b-pyt .
+docker build --build-arg "FROM_IMAGE_NAME=localhost/cray/ngc-25.10-py3-pt-hpc:2a36fef" --file Dockerfile --tag <docker/registry>/mlperf-nv-hpc:llama31_8b-pyt .
 docker save -o mlperf-nv-hpc-llama31-8b-pyt.tar <docker/registry>/mlperf-nv-hpc:llama31_8b-pyt
 env APPTAINER_NOHTTPS=true NAMESPACE="" singularity build mlperf-nv-hpc-llama31-8b-pyt.sif docker-archive://mlperf-nv-hpc-llama31-8b-pyt.tar
 export CONT=<path/to/singularity_image>
