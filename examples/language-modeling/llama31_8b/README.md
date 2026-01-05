@@ -2,7 +2,7 @@
 
 This file contains the instructions for running the NVIDIA Large Language Model Llama 3.1 8B PyTorch MLPerf Benchmark on NVIDIA hardware.
 This example is based on the [mlcommons/training_results_v5.1](https://github.com/mlcommons/training_results_v5.1/tree/main/HPE/benchmarks/llama3_8b/implementations/nemo-x86_64) repository.
-Modification have made to support a run with a singularity image.
+Modification have been made to support a run with a singularity image.
 
 ## 1. Hardware Requirements
 
