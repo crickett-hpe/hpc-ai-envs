@@ -1,0 +1,10 @@
+defaults:
+  - _self_
+  - data_prefix@model.data.data_prefix: benchmark_c4
+  - custom
+  - override hydra/job_logging: stdout
+
+hydra:
+  run:
+    dir: '.'
+  output_subdir: null

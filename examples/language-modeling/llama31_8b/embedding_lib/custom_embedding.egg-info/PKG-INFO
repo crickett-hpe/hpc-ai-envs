@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: custom_embedding
+Version: 0.1
+Requires-Dist: torch
+Dynamic: requires-dist

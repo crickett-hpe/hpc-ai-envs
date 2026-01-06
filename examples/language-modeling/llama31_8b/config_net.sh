@@ -1,0 +1,48 @@
+#!/bin/bash
+
+#export NCCL_DEBUG=info
+export NCCL_RAS_ENABLE=0
+export NCCL_RUNTIME_CONNECT=0
+export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
+export NCCL_NVLS_ENABLE=0
+export NCCL_NET_GDR_LEVEL=PHB
+export NCCL_NET_GDR_C2C=1
+
+export NCCL_P2P_NET_CHUNKSIZE=2097152
+export NCCL_P2P_CHUNKSIZE=2097152
+export NCCL_COLLNET_CHUNKSIZE=2097152
+
+export NCCL_CROSS_NIC=1
+export UB_SKIPMC=1
+export UB_MPI_BOOTSTRAP=1
+export NVTE_UB_WITH_MPI=1
+export NCCL_CUMEM_ENABLE=1
+export NCCL_CUMEM_HOST_ENABLE=1
+export NCCL_CUMEM_ENABLE=1
+export NCCL_CUMEM_HOST_ENABLE=1
+export NCCL_PROTO=^LL128
+
+export FI_CXI_RX_MATCH_MODE=hardware
+export FI_OPT_CUDA_API_PERMITTED=1
+export FI_CXI_RDZV_GET_MIN=0
+export FI_CXI_RDZV_THRESHOLD=0
+export FI_CXI_RDZV_EAGER_SIZE=0
+export FI_CXI_SAFE_DEVMEM_COPY_THRESHOLD=2147483648
+export FI_CXI_DEFAULT_TX_SIZE=256
+export FI_HMEM_CUDA_USE_GDRCOPY=1
+export FI_CXI_DEFAULT_CQ_SIZE=131072
+export FI_CXI_REQ_BUF_MIN_POSTED=6
+export FI_CXI_REQ_BUF_SIZE=12582912
+export FI_LNX_PROV_LINKS=shm+cxi
+export FI_MR_CACHE_MONITOR=userfaultfd
+export FI_CXI_REQ_BUF_MAX_CACHED=0
+export FI_CXI_DISABLE_NON_INJECT_MSG_IDC=1
+export FI_MR_CACHE_MAX_SIZE=-1
+export FI_MR_CACHE_MAX_COUNT="524288"
+export FI_PROVIDER="lnx,cxi"
+# This is not logged because it is not set, but the base container sets it to
+# 1 Since it is not in the output we must be unsetting it.
+unset FI_CXI_DISABLE_HOST_REGISTER
+
+export SLINGSHOT_DEVICES=cxi0,cxi1,cxi2,cxi3
+
