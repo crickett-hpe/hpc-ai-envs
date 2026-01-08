@@ -25,7 +25,7 @@ python -m pip install pydantic
 
 # Install some dependencies for the LLM test
 pip install 'datasets>=3.5.0'
-pip install accelerate arrow huggingface-hub packaging safetensors setuptools tokenizers transformers xxhash evaluate
+pip install accelerate arrow huggingface-hub packaging safetensors setuptools tokenizers 'transformers==4.56.2' xxhash evaluate
 #Precompile deepspeed ops except sparse_attn which has dubious support
 # Skip precompiling since this fails when using the NGC base image.
 # Need to verify that DS can use NCCL correctly for the comms, etc.
@@ -49,4 +49,3 @@ fi
 export TORCH_CUDA_ARCH_LIST=`echo $TORCH_CUDA_ARCH_LIST|sed 's/5.2 //'`
 python -m pip install $DEEPSPEED_PIP --no-binary deepspeed
 python -m deepspeed.env_report
-
