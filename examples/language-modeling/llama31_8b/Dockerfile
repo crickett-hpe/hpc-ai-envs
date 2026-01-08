@@ -131,7 +131,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 WORKDIR /workspace/llm
 
 COPY . .
-RUN cd /workspace/llm/embedding_lib && pip install --force-reinstall --no-deps .
+RUN cd /workspace/llm/embedding_lib && pip install --force-reinstall --no-deps --use-pep517 --no-build-isolation .
 ENV PYTHONPATH "/workspace/llm:/workspace/NeMo:${PYTHONPATH}"
 
 # Install NCCL v2.28.3-1:
