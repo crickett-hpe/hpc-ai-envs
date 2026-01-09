@@ -7,7 +7,7 @@ CUDA_DIR="/usr/local/cuda-$cuda_ver_str"
     
 git clone https://github.com/nvidia/nccl.git /tmp/nccl_src
 
-(cd /tmp/nccl_src && git checkout v2.28.3-1)
+(cd /tmp/nccl_src && git checkout v2.27.7-1)
 
 ## Cuda Compute Capability
 ## 8.0: A100, A30
