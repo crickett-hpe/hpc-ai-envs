@@ -15,6 +15,16 @@ echo $hpc_cpath >> $env_file
 hpc_ldpath="export LD_LIBRARY_PATH=${HPC_DIR}/lib:\$LD_LIBRARY_PATH"
 echo $hpc_ldpath >> $env_file
 
+# PMIx MCA defaults for container compatibility with host Slurm PMIx
+# These disable problematic components that don't work in containers
+echo "# PMIx/OMPI MCA defaults for Slurm compatibility" >> $env_file
+echo "export PMIX_MCA_psec=^munge" >> $env_file
+echo "export PMIX_MCA_gds=hash" >> $env_file
+echo "export PMIX_MCA_ptl=^usock" >> $env_file
+echo "export PMIX_SYSTEM_TMPDIR=/tmp" >> $env_file
+echo "export OMPI_MCA_pml=^ucx" >> $env_file
+echo "export OMPI_MCA_btl=^openib" >> $env_file
+
 # Add the ${HPC_DIR}/lib to where ld searches
 echo "${HPC_DIR}/lib" >> /etc/ld.so.conf.d/hpc-ai-env.conf
 
