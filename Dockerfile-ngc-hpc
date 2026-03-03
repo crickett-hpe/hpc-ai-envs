@@ -58,6 +58,15 @@ RUN if [ "$WITH_OFI" = "1" ]; then \
 ARG WITH_MPI
 ARG MPI_TYPE
 ARG OMPI_WITH_CUDA=1
+
+# Build PMIx first (required for OpenMPI with external PMIx)
+# PMIx v5 to match host Slurm PMIx
+COPY dockerfile_scripts/build_pmix.sh ${SCRIPT_DIR}
+RUN if [ "$WITH_MPI" = "1" ]; then \
+    chmod +x ${SCRIPT_DIR}/build_pmix.sh && \
+    ${SCRIPT_DIR}/build_pmix.sh; \
+    fi
+
 COPY dockerfile_scripts/ompi.sh ${SCRIPT_DIR}
 RUN if [ "$WITH_MPI" = "1" ]; then \
     ${SCRIPT_DIR}/ompi.sh "$UBUNTU_VERSION" \
