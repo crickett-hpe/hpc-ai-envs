@@ -21,6 +21,7 @@ WITH_AWS_TRACE ?= 0
 CRAY_LIBFABRIC_DIR ?= /opt/cray/libfabric/1.15.2.0
 CRAY_LIBCXI_DIR ?= /usr
 LIBFABRIC_VERSION ?= 2.2.0
+DOCKER ?= docker
 
 
 NGC_VERSION ?= 25.06
@@ -95,6 +96,20 @@ ifeq ($(WITH_XCCL),1)
 	XCCL_BUILD_ARG := WITH_XCCL=1
 endif
 
+# Get raw architecture from the host
+RAW_ARCH := $(shell uname -m)
+
+# Map to Docker/OCI standard names
+ifeq ($(RAW_ARCH),x86_64)
+    ARCH := amd64
+else ifeq ($(RAW_ARCH),aarch64)
+    ARCH := arm64
+else ifeq ($(RAW_ARCH),arm64)
+    ARCH := arm64
+else
+    ARCH := $(RAW_ARCH)
+endif
+
 define PARSE_IMAGE_VARS
     $(1)_BASE_IMAGE := $(2)
     
@@ -111,7 +126,7 @@ define PARSE_IMAGE_VARS
     $(1)_IMAGE_VER  := $$(word 2,$$(subst :, ,$$($(1)_IMAGE_FULL_NAME)))
     
     # 4. Build final name tag
-    $(1)_IMAGE_HPC  := $$($(1)_IMAGE_REPO)/$$($(1)_IMAGE_NAME)-hpc:$$($(1)_IMAGE_VER)
+    $(1)_IMAGE_HPC  := $$($(1)_IMAGE_REPO)/$$($(1)_IMAGE_NAME)-hpc:$$($(1)_IMAGE_VER)-$(ARCH)
 
     # --- VALIDATION CHECKS ---
     $$(if $$($(1)_IMAGE_REPO),, $$(error ERROR: Could not parse Repository from $(2)))
@@ -153,7 +168,7 @@ tar sif: TARGET_TAG := $(strip $(if $(filter ngc,$(MAKECMDGOALS)),$(USER_NGC_IMA
 
 tar: $(PLATFORM)
 	@echo "BUILD_TAR: $(PLATFORM) \"$(TARGET_NAME).tar\" from tag \"$(TARGET_TAG)\""
-	docker save -o "$(TARGET_NAME).tar" $(TARGET_TAG)
+	$(DOCKER) save -o "$(TARGET_NAME).tar" $(TARGET_TAG)
 
 # build pytorch sif
 .PHONY: sif
@@ -187,7 +202,7 @@ ngc:
 	@echo "USER_NGC_IMAGE_NAME: $(USER_NGC_IMAGE_NAME)"
 	@echo "USER_NGC_IMAGE_VER: $(USER_NGC_IMAGE_VER)"
 	@echo "USER_NGC_IMAGE_HPC: $(USER_NGC_IMAGE_HPC)"
-	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
+	$(DOCKER) build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
@@ -211,7 +226,7 @@ rocm:
 	@echo "USER_ROCM_IMAGE_NAME: $(USER_ROCM_IMAGE_NAME)"
 	@echo "USER_ROCM_IMAGE_VER: $(USER_ROCM_IMAGE_VER)"
 	@echo "USER_ROCM_IMAGE_HPC: $(USER_ROCM_IMAGE_HPC)"
-	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
+	$(DOCKER) build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
