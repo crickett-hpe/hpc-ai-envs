@@ -141,6 +141,8 @@ def get_data(config):
 
     if config.model.base_config == "8b":
         r = [6]
+    elif config.model.base_config == "70b":
+        r = [6, 7]
     elif config.model.base_config == "405b":
         r = [6, 7]
     train_datasets = sum(

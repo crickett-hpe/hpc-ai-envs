@@ -151,7 +151,7 @@ cleanup_pyxis() {
 cleanup_pyxis
 
 # Other vars
-export MODEL_NAME="llama31_${MODEL_SIZE}"
+export MODEL_NAME="llama31_${MODEL_SIZE}_llm"
 export MODEL_FRAMEWORK="pytorch"
 LOGBASE="${DATESTAMP}"
 export SPREFIX="${MODEL_NAME}_${MODEL_FRAMEWORK}_${DGXNNODES}x${DGXNGPU}_${DATESTAMP}"
