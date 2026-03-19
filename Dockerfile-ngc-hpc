@@ -79,6 +79,12 @@ RUN if [ "$WITH_OFI" = "1" ]; then \
     ${SCRIPT_DIR}/build_aws.sh "$WITH_OFI" "$WITH_XCCL" "$WITH_AWS_TRACE"; \
     fi
 
+ARG WITH_DEEPSPEED
+COPY dockerfile_scripts/install_deepspeed.sh ${SCRIPT_DIR}
+RUN if [ "$WITH_DEEPSPEED" = "1" ]; then \
+    ${SCRIPT_DIR}/install_deepspeed.sh; \
+    fi
+
 # Try installing Horovod
 ARG WITH_PT
 ARG WITH_TF

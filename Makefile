@@ -17,6 +17,7 @@ BUILD_OPTS ?=
 WITH_MPI ?= 1
 WITH_OFI ?= 1
 WITH_HOROVOD ?= 0
+WITH_DEEPSPEED ?= 0
 WITH_AWS_TRACE ?= 0
 CRAY_LIBFABRIC_DIR ?= /opt/cray/libfabric/1.15.2.0
 CRAY_LIBCXI_DIR ?= /usr
@@ -79,6 +80,12 @@ ifeq ($(WITH_MPI),1)
 		CPU_SUFFIX := -cpu
 		OFI_BUILD_ARG := WITH_OFI
 	endif
+
+	ifeq ($(WITH_DEEPSPEED),1)
+		DEEPSPEED_ARG := WITH_DEEPSPEED=1
+	else
+		DEEPSPEED_ARG := WITH_DEEPSPEED=0
+	endif
 else
 	PLATFORMS := $(PLATFORM_LINUX_AMD_64),$(PLATFORM_LINUX_ARM_64)
 	WITH_MPI := 0
@@ -89,6 +96,7 @@ else
 	HOROVOD_CPU_OPERATIONS := GLOO
 	MPI_BUILD_ARG := USE_GLOO=1
 	AWS_TRACE_ARG := WITH_AWS_TRACE=0
+	DEEPSPEED_ARG := WITH_DEEPSPEED=0
 endif
 
 XCCL_BUILD_ARG := WITH_XCCL=0
@@ -208,6 +216,7 @@ ngc:
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "$(AWS_TRACE_ARG)" \
+		--build-arg "$(DEEPSPEED_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_NGC_BASE_IMAGE)" \
@@ -232,6 +241,7 @@ rocm:
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "$(AWS_TRACE_ARG)" \
+		--build-arg "$(DEEPSPEED_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_ROCM_BASE_IMAGE)" \
