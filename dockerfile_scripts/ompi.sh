@@ -22,9 +22,11 @@ else
     GPU_OPT="--with-rocm"
 fi
 
+# Use external PMIx built in HPC_DIR (from build_pmix.sh) instead of internal
+# This allows better compatibility with host Slurm PMIx
 OMPI_CONFIG_OPTIONS_VAR="--prefix ${HPC_DIR} --enable-prte-prefix-by-default \
    --enable-shared --with-cma --with-pic --with-libfabric=${HPC_DIR}         \
-   --without-ucx --with-pmix=internal ${GPU_OPT}"
+   --without-ucx --with-pmix=${HPC_DIR} ${GPU_OPT}"
 
 # Install OMPI
 OMPI_VER=v5.0
