@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export NCCL_DEBUG=info
+export NCCL_DEBUG=error
 export NCCL_SOCKET_IFNAME="hsn0,hsn1,hsn2,hsn3"
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 # Setting this to 0 showed considerably better performance for
@@ -28,6 +28,10 @@ fi_settings=`env | grep FI_`
 echo "FI_*: $fi_settings"
 nccl_settings=`env | grep NCCL_`
 echo "NCCL_*: $nccl_settings"
+echo "Setting PMIX_MCA_gds=hash"
+export PMIX_MCA_gds=hash
+export PMIX_MCA_psec=^munge
+
 
 # Execute what we were told to execute
 exec "${@}"

@@ -1,4 +1,4 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=ubuntu:22.04
 FROM ${BASE_IMAGE}
 
 ARG SCRIPT_DIR=/tmp/dockerfile_scripts/
@@ -53,6 +53,16 @@ ARG WITH_MPI=1
 ARG WITH_OFI=1
 ARG OMPI_WITH_CUDA=0
 ARG OMPI_WITH_ROCM=1
+
+
+# Build PMIx first (required for OpenMPI with external PMIx)
+# PMIx v5 to match host Slurm PMIx
+COPY dockerfile_scripts/build_pmix.sh ${SCRIPT_DIR}
+RUN if [ "$WITH_MPI" = "1" ]; then \
+    chmod +x ${SCRIPT_DIR}/build_pmix.sh && \
+    ${SCRIPT_DIR}/build_pmix.sh; \
+    fi
+
 COPY dockerfile_scripts/ompi.sh ${SCRIPT_DIR}
 RUN if [ "$WITH_MPI" = "1" ]; then ${SCRIPT_DIR}/ompi.sh "$UBUNTU_VERSION" "$WITH_OFI" "$OMPI_WITH_ROCM"; fi
 
