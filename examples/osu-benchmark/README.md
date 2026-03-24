@@ -1,53 +1,49 @@
 ### MPI OSU Benchmarks
 
-The following is an example of how to test MPI to verify that the
-MPI inside the container can correctly use the Cray libfabric/cxi. Note that
-the container used in this example pulled in copies of the Cray libfabric/cxi
-as part of the final build step (ie, Dockerfile-ss) so the command does
-not bind-mount in the Cray libfabric/cxi at container runtime.
+The OSU Micro-Benchmarks are included in the container image and located at:
 
 ```
-$> wget https://mvapich.cse.ohio-state.edu/download/mvapich/osu-micro-benchmarks-7.4.tar.gz
-$> tar zxf osu-micro-benchmarks-7.4.tar.gz
-$> cd osu-micro-benchmarks-7.4/
-$> singularity shell --nv --bind $TMPDIR --bind `pwd` /projects/benchmarking/public/sif/cray-pytorch-ngc-hpc-dev.sif
-Singularity>  ./configure CC=`which mpicc` CXX=`which mpicxx` --prefix=`pwd`
-Singularity> make
-Singularity> exit
-$> srun --exclusive -c 72 --distribution=*:block --mpi=pmi2 -n 2 --ntasks-per-node=1 --cpu-bind=socket --ntasks-per-socket=1 --sockets-per-node=4 --gpus=8 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` /projects/benchmarking/public/sif/cray-pytorch-ngc-hpc-dev.sif /projects/benchmarking/public/examples/wrapper.sh ./c/mpi/one-sided/osu_get_bw
+/container/hpc/tests/osu-micro-benchmarks
+```
+
+To evaluate MPI performance, run the individual benchmark binaries across two
+nodes using `srun`.
+
+```
+$> srun --exclusive -c 72 --distribution=*:block --mpi=pmix -n 2 --ntasks-per-node=1 --cpu-bind=socket --ntasks-per-socket=1 --sockets-per-node=4 singularity run --nv --bind /projects --bind $TMPDIR --bind $HOME --bind `pwd` /projects/benchmarking/public/sif/cray-pytorch-ngc-hpc-dev.sif /projects/benchmarking/public/examples/wrapper.sh /container/hpc/tests/osu-micro-benchmarks/mpi/one-sided/osu_get_bw
 ```
 
 This should produce output similar to:
 
 ```
-# OSU MPI_Get Bandwidth Test v7.4
+# OSU MPI_Get Bandwidth Test v7.5.2
 # Window creation: MPI_Win_allocate
 # Synchronization: MPI_Win_flush
 # Datatype: MPI_CHAR.
 # Size      Bandwidth (MB/s)
-1                       1.03
-2                       2.10
-4                       4.20
-8                       8.38
-16                     16.78
-32                     33.57
-64                     65.82
-128                   132.22
-256                   254.89
-512                   510.63
-1024                 1019.58
-2048                 2036.45
-4096                 4045.65
-8192                 7563.77
-16384               11773.70
-32768               15233.84
-65536               18976.11
-131072              21131.24
-262144              22495.07
-524288              23224.79
-1048576             23590.77
-2097152             23807.66
-4194304             23903.40
+1                       0.24
+2                       0.47
+4                       0.93
+8                       1.87
+16                      3.76
+32                      7.70
+64                     15.95
+128                    33.47
+256                    73.39
+512                   166.74
+1024                  413.91
+2048                 1286.75
+4096                 3254.24
+8192                 7944.83
+16384               17655.37
+32768               23105.17
+65536               23683.79
+131072              23989.79
+262144              24138.02
+524288              24211.46
+1048576             23959.64
+2097152             24194.21
+4194304             24248.76
 ```
 
 
