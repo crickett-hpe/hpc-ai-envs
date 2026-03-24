@@ -19,8 +19,6 @@ WITH_OFI ?= 1
 WITH_HOROVOD ?= 0
 WITH_DEEPSPEED ?= 0
 WITH_AWS_TRACE ?= 0
-CRAY_LIBFABRIC_DIR ?= /opt/cray/libfabric/1.15.2.0
-CRAY_LIBCXI_DIR ?= /usr
 LIBFABRIC_VERSION ?= 2.2.0
 DOCKER ?= docker
 
@@ -39,8 +37,6 @@ ROCM_UBUNTU     := ubuntu22.04
 PYTHON_VERSION  := py3.10
 ROCM_PT_RELEASE := pytorch_release_2.4.0
 ROCM_PT_VERSION := $(ROCM_VERSION)_$(ROCM_UBUNTU)_$(PYTHON_VERSION)_$(ROCM_PT_RELEASE)
-ROCM_PYTORCH_REPO := $(ROCM_VERSION)-$(PYTHON_VERSION)-pt
-ROCM_PYTORCH_HPC_REPO := $(ROCM_VERSION)-$(PYTHON_VERSION)-pt-hpc
 
 # If the user specifies USE_CWD_SIF=1 on the command line, singularity
 # will use the current working directory for temp and cache space, this
@@ -117,6 +113,23 @@ else ifeq ($(RAW_ARCH),arm64)
 else
     ARCH := $(RAW_ARCH)
 endif
+
+# The following function dynamically builds these variables, and
+# verifies it was able to correctly parse the provided image names:
+#
+#   USER_NGC_BASE_IMAGE        # Everything passed in
+#   USER_NGC_IMAGE_FULL_NAME   # Everything after last /
+#   USER_NGC_IMAGE_REPO        # Everything before last /
+#   USER_NGC_IMAGE_NAME        # Everything left before :
+#   USER_NGC_IMAGE_VER         # Everything left after :
+#   USER_NGC_IMAGE_HPC         # <repo>/<name>-hpc:<ver>-$(ARCH)
+#
+#   USER_ROCM_BASE_IMAGE       # Everything passed in
+#   USER_ROCM_IMAGE_FULL_NAME  # Everything after last /
+#   USER_ROCM_IMAGE_REPO       # Everything before last /
+#   USER_ROCM_IMAGE_NAME       # Everything left before :
+#   USER_ROCM_IMAGE_VER        # Everything left after :
+#   USER_ROCM_IMAGE_HPC        # <repo>/<name>-hpc:<ver>-$(ARCH)
 
 define PARSE_IMAGE_VARS
     $(1)_BASE_IMAGE := $(2)
@@ -202,8 +215,6 @@ sif: tar
 # This enables us to append the SS11 bits to an otherwise working
 # user image to make it easier for users to deploy their containers on SS11.
 .PHONY: ngc
-ngc: TARGET_TAG := $(USER_NGC_IMAGE_HPC)
-ngc: TARGET_NAME := $(shell echo "$(USER_NGC_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-hpc-',g)
 ngc:
 	@echo "USER_NGC_BASE_IMAGE: $(USER_NGC_BASE_IMAGE)"
 	@echo "USER_NGC_IMAGE_REPO: $(USER_NGC_IMAGE_REPO)"
