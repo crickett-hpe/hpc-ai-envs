@@ -99,6 +99,12 @@ ENV WITH_NFS_WORKAROUND=$WITH_NFS_WORKAROUND
 # PAD-133
 ENV MIOPEN_DEBUG_SAVE_TEMP_DIR=1
 
+ARG WITH_DEEPSPEED
+COPY dockerfile_scripts/install_deepspeed.sh ${SCRIPT_DIR}
+RUN if [ "$WITH_DEEPSPEED" = "1" ]; then \
+    ${SCRIPT_DIR}/install_deepspeed.sh; \
+    fi
+
 COPY dockerfile_scripts/build_tests.sh ${SCRIPT_DIR}
 RUN if [ "$WITH_MPI" = "1" ]; then \
     ${SCRIPT_DIR}/build_tests.sh;  \
