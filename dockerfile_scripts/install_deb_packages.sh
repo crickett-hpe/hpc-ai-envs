@@ -41,6 +41,7 @@ apt-get update \
     libnl-*-3-dev \
     libconfig-dev \
     libuv1-dev \
+    libevent-dev \
     fuse \
     libfuse-dev \
     libyaml-dev \

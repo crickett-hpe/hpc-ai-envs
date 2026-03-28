@@ -5,17 +5,7 @@ SHORT_GIT_HASH := $(shell git rev-parse --short HEAD)
 
 export DOCKERHUB_REGISTRY := cray
 export REGISTRY_REPO := hpc-ai-envs
-CPU_PREFIX_39 := $(REGISTRY_REPO):py-3.9-
-CPU_PREFIX_310 := $(REGISTRY_REPO):py-3.10-
-ROCM_56_PREFIX := $(REGISTRY_REPO):rocm-5.6-
-ROCM_57_PREFIX := $(REGISTRY_REPO):rocm-5.7-
-ROCM_60_PREFIX := $(REGISTRY_REPO):rocm-6.0-
-ROCM_63_PREFIX := $(REGISTRY_REPO):rocm-6.3-
 
-CPU_SUFFIX := -cpu
-CUDA_SUFFIX := -cuda
-PLATFORM_LINUX_ARM_64 := linux/arm64
-PLATFORM_LINUX_AMD_64 := linux/amd64
 HOROVOD_GPU_OPERATIONS := NCCL
 BUILD_OPTS ?=
 
@@ -26,17 +16,27 @@ BUILD_OPTS ?=
 # at runtime.
 WITH_MPI ?= 1
 WITH_OFI ?= 1
-WITH_SS11 ?= 0
 WITH_HOROVOD ?= 0
+WITH_DEEPSPEED ?= 0
 WITH_AWS_TRACE ?= 0
-CRAY_LIBFABRIC_DIR ?= "/opt/cray/libfabric/1.15.2.0"
-CRAY_LIBCXI_DIR ?= "/usr"
-NGC_VERSION ?= "25.06"
-LIBFABRIC_VERSION ?= "2.2.0"
+LIBFABRIC_VERSION ?= 2.2.0
+DOCKER ?= docker
 
-# If the user doesn't explicitly pass in a value for BUILD_SIF, then
-# default it to 1 if singularity is in the PATH
-BUILD_SIF ?= $(shell singularity -h 2>/dev/null|head -1c 2>/dev/null|wc -l)
+
+NGC_VERSION ?= 25.06
+NGC_PYTORCH_PREFIX   := nvcr.io/nvidia/pytorch
+NGC_PYTORCH_VERSION  := $(NGC_VERSION)-py3
+NGC_PYTORCH_REPO     := ngc-$(NGC_PYTORCH_VERSION)-pt
+NGC_PYTORCH_HPC_REPO := ngc-$(NGC_PYTORCH_VERSION)-pt-hpc
+
+ROCM_VERSION ?= rocm6.3.4
+# From https://hub.docker.com/r/rocm/pytorch/tags
+# rocm/pytorch:rocm6.3.4_ubuntu22.04_py3.10_pytorch_release_2.4.0
+ROCM_PT_PREFIX  := rocm/pytorch
+ROCM_UBUNTU     := ubuntu22.04
+PYTHON_VERSION  := py3.10
+ROCM_PT_RELEASE := pytorch_release_2.4.0
+ROCM_PT_VERSION := $(ROCM_VERSION)_$(ROCM_UBUNTU)_$(PYTHON_VERSION)_$(ROCM_PT_RELEASE)
 
 # If the user specifies USE_CWD_SIF=1 on the command line, singularity
 # will use the current working directory for temp and cache space, this
@@ -45,7 +45,11 @@ BUILD_SIF ?= $(shell singularity -h 2>/dev/null|head -1c 2>/dev/null|wc -l)
 # use its default tmp and cache dir locations.
 USE_CWD_SIF ?= 0
 
-ifeq "$(WITH_MPI)" "1"
+# If not specified (or if RM_SIF_TAR=0 is set) then the docker saved
+# tarfile will not be removed
+RM_SIF_TAR ?= 0
+
+ifeq ($(WITH_MPI),1)
 	HPC_SUFFIX := -hpc
 	PLATFORMS := $(PLATFORM_LINUX_AMD_64),$(PLATFORM_LINUX_ARM_64)
 	HOROVOD_WITH_MPI := 1
@@ -53,24 +57,30 @@ ifeq "$(WITH_MPI)" "1"
 	HOROVOD_CPU_OPERATIONS := MPI
 	CUDA_SUFFIX := -cuda
 	NCCL_BUILD_ARG := WITH_NCCL
-        ifeq "$(WITH_NCCL)" "1"
+        ifeq ($(WITH_NCCL),1)
 		NCCL_BUILD_ARG := WITH_NCCL=1
         endif
 	MPI_BUILD_ARG := WITH_MPI=1
 
-	ifeq "$(WITH_AWS_TRACE)" "1"
+	ifeq ($(WITH_AWS_TRACE),1)
 		AWS_TRACE_ARG := WITH_AWS_TRACE=1
 	else
 		AWS_TRACE_ARG := WITH_AWS_TRACE=0
 	endif
 
-	ifeq "$(WITH_OFI)" "1"
+	ifeq ($(WITH_OFI),1)
 	        CUDA_SUFFIX := -cuda
 		CPU_SUFFIX := -cpu
 		OFI_BUILD_ARG := WITH_OFI=1
 	else
 		CPU_SUFFIX := -cpu
 		OFI_BUILD_ARG := WITH_OFI
+	endif
+
+	ifeq ($(WITH_DEEPSPEED),1)
+		DEEPSPEED_ARG := WITH_DEEPSPEED=1
+	else
+		DEEPSPEED_ARG := WITH_DEEPSPEED=0
 	endif
 else
 	PLATFORMS := $(PLATFORM_LINUX_AMD_64),$(PLATFORM_LINUX_ARM_64)
@@ -82,400 +92,170 @@ else
 	HOROVOD_CPU_OPERATIONS := GLOO
 	MPI_BUILD_ARG := USE_GLOO=1
 	AWS_TRACE_ARG := WITH_AWS_TRACE=0
+	DEEPSPEED_ARG := WITH_DEEPSPEED=0
 endif
 
 XCCL_BUILD_ARG := WITH_XCCL=0
-ifeq "$(WITH_XCCL)" "1"
+ifeq ($(WITH_XCCL),1)
 	XCCL_BUILD_ARG := WITH_XCCL=1
 endif
 
-ifeq "$(WITH_SS11)" "1"
-	ifeq ($(HPC_LIBS_DIR),)
-           LIBFAB_SO=$(shell find $(CRAY_LIBFABRIC_DIR) -name libfabric\*so.\*)
-           LIBCXI_SO=$(shell find $(CRAY_LIBCXI_DIR) -name libcxi\*so.\*)
-           # Make sure we found the libs
-           ifneq ($(and $(LIBFAB_SO),$(LIBCXI_SO)),)
-              LIBFAB_DIR=$(shell dirname $(LIBFAB_SO))
-              LIBCXI_DIR=$(shell dirname $(LIBCXI_SO))
-              # Copy the libfabric/cxi to a tmp dir for the HPC_LIBS_DIR
-              TMP_FILE:=$(shell mktemp -d -t ss11-libs.XXXXXX)
-              TMP_FILE_BASE=$(shell basename $(TMP_FILE))
-              # Make a tmp dir in the cwd using the tmp_file name.
-              # We do this to distinguish if we made the dir vs the user
-              # putting it there so we know to clean it up after the build.
-              $(shell mkdir $(TMP_FILE_BASE))
-              HPC_LIBS_DIR=$(TMP_FILE_BASE)
-              cp_out:=$(shell cp $(LIBFAB_DIR)/libfabric* $(HPC_LIBS_DIR))
-              cp_out:=$(shell cp $(LIBCXI_DIR)/libcxi* $(HPC_LIBS_DIR))
-              # Signal that the libs were copied so we clean them up after.
-              HPC_TMP_LIBS_DIR := 1
-           endif
-        endif
+# Get raw architecture from the host
+RAW_ARCH := $(shell uname -m)
+
+# Map to Docker/OCI standard names
+ifeq ($(RAW_ARCH),x86_64)
+    ARCH := amd64
+else ifeq ($(RAW_ARCH),aarch64)
+    ARCH := arm64
+else ifeq ($(RAW_ARCH),arm64)
+    ARCH := arm64
+else
+    ARCH := $(RAW_ARCH)
 endif
 
+# The following function dynamically builds these variables, and
+# verifies it was able to correctly parse the provided image names:
+#
+#   USER_NGC_BASE_IMAGE        # Everything passed in
+#   USER_NGC_IMAGE_FULL_NAME   # Everything after last /
+#   USER_NGC_IMAGE_REPO        # Everything before last /
+#   USER_NGC_IMAGE_NAME        # Everything left before :
+#   USER_NGC_IMAGE_VER         # Everything left after :
+#   USER_NGC_IMAGE_HPC         # <repo>/<name>-hpc:<ver>-$(ARCH)
+#
+#   USER_ROCM_BASE_IMAGE       # Everything passed in
+#   USER_ROCM_IMAGE_FULL_NAME  # Everything after last /
+#   USER_ROCM_IMAGE_REPO       # Everything before last /
+#   USER_ROCM_IMAGE_NAME       # Everything left before :
+#   USER_ROCM_IMAGE_VER        # Everything left after :
+#   USER_ROCM_IMAGE_HPC        # <repo>/<name>-hpc:<ver>-$(ARCH)
 
-# Separate out NGC vs ROCM base images only because it could impact which
-# tools we add, such as nccl vs rccl, in the HPC Dockerfile. Note we could
-# likely modify this to work for both and have a separate flag to specify
-# nccl/rccl, etc, to keep things cleaner.
-ifneq ($(USER_NGC_BASE_IMAGE),)
-        USER_NGC_IMAGE_REPO=$(shell echo "$(USER_NGC_BASE_IMAGE)" | awk 'BEGIN{FS=OFS="/"}{NF--; print}')
-        USER_NGC_IMAGE_NAME=$(shell echo "$(USER_NGC_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$1}')
-        USER_NGC_IMAGE_VER=$(shell echo "$(USER_NGC_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$NF}')
-        USER_NGC_IMAGE_HPC=$(USER_NGC_IMAGE_REPO)/$(USER_NGC_IMAGE_NAME)-hpc:$(USER_NGC_IMAGE_VER)
-        USER_NGC_IMAGE_SS=$(USER_NGC_IMAGE_REPO)/$(USER_NGC_IMAGE_NAME)-hpc-ss:$(USER_NGC_IMAGE_VER)
-        USER_NGC_IMAGE_SIF=$(shell echo "$(USER_NGC_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-',g)
+define PARSE_IMAGE_VARS
+    $(1)_BASE_IMAGE := $(2)
+    
+    # 1. Get everything AFTER the last slash (e.g., pytorch:25.06-py3)
+    # We grab the last word after splitting the path by slashes
+    $(1)_IMAGE_FULL_NAME := $$(lastword $$(subst /, ,$(2)))
+    
+    # 2. Get everything BEFORE the last slash
+    # We replace the filename part with nothing in the original string
+    $(1)_IMAGE_REPO := $$(subst /$$($(1)_IMAGE_FULL_NAME),,$(2))
+    
+    # 3. Split the full name into Name and Version using the colon
+    $(1)_IMAGE_NAME := $$(word 1,$$(subst :, ,$$($(1)_IMAGE_FULL_NAME)))
+    $(1)_IMAGE_VER  := $$(word 2,$$(subst :, ,$$($(1)_IMAGE_FULL_NAME)))
+    
+    # 4. Build final name tag
+    $(1)_IMAGE_HPC  := $$($(1)_IMAGE_REPO)/$$($(1)_IMAGE_NAME)-hpc:$$($(1)_IMAGE_VER)-$(ARCH)
+
+    # --- VALIDATION CHECKS ---
+    $$(if $$($(1)_IMAGE_REPO),, $$(error ERROR: Could not parse Repository from $(2)))
+    $$(if $$($(1)_IMAGE_NAME),, $$(error ERROR: Could not parse Image Name from $(2)))
+    $$(if $$($(1)_IMAGE_VER),,  $$(error ERROR: Could not parse Image Version/Tag from $(2)))
+    # -------------------------
+endef
+
+# Set defaults
+NGC_DEFAULT  := $(NGC_PYTORCH_PREFIX):$(NGC_PYTORCH_VERSION)
+ROCM_DEFAULT := $(ROCM_PT_PREFIX):$(ROCM_PT_VERSION)
+
+# Use 'eval' to instantiate the variables globally
+# Check if USER_IMAGE was passed in; if not, use the defaults.
+ifeq ($(USER_IMAGE),)
+    $(eval $(call PARSE_IMAGE_VARS,USER_NGC,$(NGC_DEFAULT)))
+    $(eval $(call PARSE_IMAGE_VARS,USER_ROCM,$(ROCM_DEFAULT)))
+else
+    # If USER_IMAGE is provided, we map it to both or just the one being built
+    $(eval $(call PARSE_IMAGE_VARS,USER_NGC,$(USER_IMAGE)))
+    $(eval $(call PARSE_IMAGE_VARS,USER_ROCM,$(USER_IMAGE)))
 endif
-ifneq ($(USER_ROCM_BASE_IMAGE),)
-        USER_ROCM_IMAGE_REPO=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | awk 'BEGIN{FS=OFS="/"}{NF--; print}')
-        USER_ROCM_IMAGE_NAME=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$1}')
-        USER_ROCM_IMAGE_VER=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | awk -F "/" '{print $$NF}' | awk -F ":" '{print $$NF}')
-        USER_ROCM_IMAGE_HPC=$(USER_ROCM_IMAGE_REPO)/$(USER_ROCM_IMAGE_NAME)-hpc:$(USER_ROCM_IMAGE_VER)
-        USER_ROCM_IMAGE_SS=$(USER_ROCM_IMAGE_REPO)/$(USER_ROCM_IMAGE_NAME)-hpc-ss:$(USER_ROCM_IMAGE_VER)
-        USER_ROCM_IMAGE_SIF=$(shell echo "$(USER_ROCM_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-',g)
+
+# Determine which platform was requested based on the goals
+# This checks if the user typed 'nvidia' or 'amd' on the command line
+ifeq ($(filter ngc,$(MAKECMDGOALS)),ngc)
+    PLATFORM := ngc
+endif
+ifeq ($(filter rocm,$(MAKECMDGOALS)),rocm)
+    PLATFORM := rocm
 endif
 
+# build docker tar file
+.PHONY: tar
+tar sif: TARGET_NAME := $(strip $(if $(filter ngc,$(MAKECMDGOALS)),$(subst :,-,$(subst /,-,$(USER_NGC_IMAGE_HPC))),\
+                        $(if $(filter rocm,$(MAKECMDGOALS)),$(subst :,-,$(subst /,-,$(USER_ROCM_IMAGE_HPC))))))
+tar sif: TARGET_TAG := $(strip $(if $(filter ngc,$(MAKECMDGOALS)),$(USER_NGC_IMAGE_HPC),\
+                       $(if $(filter rocm,$(MAKECMDGOALS)),$(USER_ROCM_IMAGE_HPC))))
 
-NGC_PYTORCH_PREFIX := nvcr.io/nvidia/pytorch
-NGC_TENSORFLOW_PREFIX := nvcr.io/nvidia/tensorflow
-NGC_PYTORCH_VERSION := $(NGC_VERSION)-py3
-NGC_TENSORFLOW_VERSION := 24.03-tf2-py3
-NGC_PYTORCH_REPO := ngc-$(NGC_PYTORCH_VERSION)-pt
-NGC_PYTORCH_HPC_REPO := ngc-$(NGC_PYTORCH_VERSION)-pt-hpc
-NGC_TF_REPO := tensorflow-ngc-dev
-NGC_TF_HPC_REPO := tensorflow-ngc-hpc-dev
+tar: $(PLATFORM)
+	@echo "BUILD_TAR: $(PLATFORM) \"$(TARGET_NAME).tar\" from tag \"$(TARGET_TAG)\""
+	$(DOCKER) save -o "$(TARGET_NAME).tar" $(TARGET_TAG)
 
 # build pytorch sif
-TMP_SIF := $(shell mktemp -d -t sif-reg.XXXXXX)
-TMP_SIF_BASE := "$(PWD)/$(shell basename $(TMP_SIF))"
+.PHONY: sif
+sif: tar
+	@echo "BUILD_SIF: $(TARGET_NAME).sif"
+	@set -euo pipefail;                                                                     \
+	TMP_SIF=$$(mktemp -d -p "$$(pwd)" -t sif-reg.XXXXXX);                                   \
+	trap 'rm -rf "$$TMP_SIF" >/dev/null 2>&1 || true' EXIT;                                 \
+	mkdir -p "$$TMP_SIF";                                                                   \
+	if [ "$(USE_CWD_SIF)" = "1" ]; then                                                     \
+	    echo "Using CWD for singularity tmp/cache: $$TMP_SIF";                              \
+	    SING_ENV="SINGULARITY_TMPDIR=$$TMP_SIF SINGULARITY_CACHEDIR=$$TMP_SIF";             \
+	else                                                                                    \
+	    SING_ENV="";                                                                        \
+	fi;                                                                                     \
+	echo eval $$SING_ENV SINGULARITY_NOHTTPS=true NAMESPACE=""                                   \
+	    singularity -vvv build $(TARGET_NAME).sif "docker-archive://$(TARGET_NAME).tar";    \
+	eval $$SING_ENV SINGULARITY_NOHTTPS=true NAMESPACE=""                                   \
+	    singularity -vvv build $(TARGET_NAME).sif "docker-archive://$(TARGET_NAME).tar";    \
+	if [ "$(RM_SIF_TAR)" = "1" ]; then rm -f "$(TARGET_NAME).tar"; fi
 
-SING_DIRS :=
-ifeq "$(USE_CWD_SIF)" "1"
-     SING_DIRS := SINGULARITY_TMPDIR=$(TMP_SIF_BASE) SINGULARITY_CACHEDIR=$(TMP_SIF_BASE)
-endif
-
-.PHONY: build-sif
-build-sif:
-	# Make a tmp dir in the cwd using the tmp_file name.
-	mkdir $(TMP_SIF_BASE)
-	docker save -o "$(TARGET_NAME).tar" $(TARGET_TAG)
-	env $(SING_DIRS) \
-            SINGULARITY_NOHTTPS=true NAMESPACE="" \
-            singularity -vvv build $(TARGET_NAME).sif \
-                             "docker-archive://$(TARGET_NAME).tar"
-	rm -rf $(TMP_SIF_BASE) "$(TARGET_NAME).tar"
-
-# build hpc together since hpc is dependent on the normal build
-.PHONY: build-pytorch-ngc
-build-pytorch-ngc:
-	docker build -f Dockerfile-pytorch-ngc $(BUILD_OPTS) \
-		--build-arg BASE_IMAGE="$(NGC_PYTORCH_PREFIX):$(NGC_PYTORCH_VERSION)" \
-		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH) \
-		.
-	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
-		--build-arg "$(NCCL_BUILD_ARG)" \
-		--build-arg "$(XCCL_BUILD_ARG)" \
-		--build-arg "$(MPI_BUILD_ARG)" \
-		--build-arg "$(OFI_BUILD_ARG)" \
-		--build-arg "$(AWS_TRACE_ARG)" \
-		--build-arg "WITH_PT=1" \
-		--build-arg "WITH_TF=0" \
-		--build-arg "WITH_HOROVOD=$(WITH_HOROVOD)" \
-		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
-		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
-		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
-		.
-	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
-	@echo "WITH_SS11: $(WITH_SS11)"
-	@echo "LIBFAB_DIR: $(LIBFAB_DIR)"
-	@echo "LIBCXI_DIR: $(LIBCXI_DIR)"
-ifneq ($(HPC_LIBS_DIR),)
-	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
-	docker build -f Dockerfile-ss $(BUILD_OPTS) \
-		--build-arg BASE_IMAGE=$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
-		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
-		-t $(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH) \
-		.
-        ifneq ($(HPC_TMP_LIBS_DIR),)
-	    rm -rf $(HPC_LIBS_DIR)
-        endif
-        ifeq "$(BUILD_SIF)" "1"
-	    @echo "BUILD_SIF: $(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO)-ss:$(SHORT_GIT_HASH)" \
-                          TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
-        endif
-else
-        ifeq "$(BUILD_SIF)" "1"
-	    @echo "BUILD_SIF: $(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(NGC_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)" \
-                          TARGET_NAME="$(NGC_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
-        endif
-endif
-
-
-# Build an HPC container using the base image provided by the user. 
+# Build an HPC container using the base image provided by the user.
 # This enables us to append the SS11 bits to an otherwise working
 # user image to make it easier for users to deploy their containers on SS11.
-.PHONY: build-user-spec-ngc
-build-user-spec-ngc:
+.PHONY: ngc
+ngc:
 	@echo "USER_NGC_BASE_IMAGE: $(USER_NGC_BASE_IMAGE)"
 	@echo "USER_NGC_IMAGE_REPO: $(USER_NGC_IMAGE_REPO)"
 	@echo "USER_NGC_IMAGE_NAME: $(USER_NGC_IMAGE_NAME)"
 	@echo "USER_NGC_IMAGE_VER: $(USER_NGC_IMAGE_VER)"
 	@echo "USER_NGC_IMAGE_HPC: $(USER_NGC_IMAGE_HPC)"
-	@echo "USER_NGC_IMAGE_SS: $(USER_NGC_IMAGE_SS)"
-	@echo "USER_NGC_IMAGE_SIF: $(USER_NGC_IMAGE_SIF)"
-	docker build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
+	$(DOCKER) build -f Dockerfile-ngc-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "$(AWS_TRACE_ARG)" \
+		--build-arg "$(DEEPSPEED_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_NGC_BASE_IMAGE)" \
 		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
 		-t $(USER_NGC_IMAGE_HPC)\
 		.
-ifneq ($(HPC_LIBS_DIR),)
-	docker build -f Dockerfile-ss $(BUILD_OPTS) \
-		--build-arg BASE_IMAGE=$(USER_NGC_IMAGE_HPC) \
-		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
-		-t $(USER_NGC_IMAGE_SS) \
-		.
-        ifneq ($(HPC_TMP_LIBS_DIR),)
-	    rm -rf $(HPC_LIBS_DIR)
-        endif
-        ifeq "$(BUILD_SIF)" "1"
-	    @echo "BUILD_SIF: $(USER_NGC_IMAGE_SS)"
-	    make build-sif TARGET_TAG="$(USER_NGC_IMAGE_SS)" \
-                TARGET_NAME="$(shell echo "$(USER_NGC_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-ss-',g)"
-        endif
-else
-        ifeq "$(BUILD_SIF)" "1"
-	    @echo "BUILD_SIF: $(USER_NGC_IMAGE_HPC)"
-	    make build-sif TARGET_TAG="$(USER_NGC_IMAGE_HPC)" \
-	        TARGET_NAME="$(shell echo "$(USER_NGC_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-hpc-',g)"
-        endif
-endif
 
-
-.PHONY: build-tensorflow-ngc
-build-tensorflow-ngc:
-	docker build -f Dockerfile-tensorflow-ngc \
-		--build-arg BASE_IMAGE="$(NGC_TENSORFLOW_PREFIX):$(NGC_TENSORFLOW_VERSION)" \
-		-t $(DOCKERHUB_REGISTRY)/$(NGC_TF_REPO):$(SHORT_GIT_HASH) \
-		.
-	docker build -f Dockerfile-ngc-hpc \
-		--build-arg "$(MPI_BUILD_ARG)" \
-		--build-arg "$(OFI_BUILD_ARG)" \
-		--build-arg "$(NCCL_BUILD_ARG)" \
-		--build-arg "WITH_PT=0" \
-		--build-arg "WITH_TF=1" \
-		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(NGC_TF_REPO):$(SHORT_GIT_HASH)" \
-		-t $(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH) \
-		.
-ifneq ($(HPC_LIBS_DIR),)
-	@echo "HPC_LIBS_DIR: $(HPC_LIBS_DIR)"
-	docker build -f Dockerfile-ss \
-		--build-arg BASE_IMAGE=$(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH) \
-		--build-arg "HPC_LIBS_DIR=$(HPC_LIBS_DIR)" \
-		-t $(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO)-ss:$(SHORT_GIT_HASH) \
-		.
-	ifneq ($(HPC_TMP_LIBS_DIR),)
-		rm -rf $(HPC_LIBS_DIR)
-	endif
-        ifeq "$(BUILD_SIF)" "1"
-	    @echo "BUILD_SIF: $(NGC_TF_HPC_REPO)-ss:$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO)-ss:$(SHORT_GIT_HASH)" \
-                          TARGET_NAME="$(NGC_TF_HPC_REPO)-$(SHORT_GIT_HASH)"
-        endif
-else
-        ifeq "$(BUILD_SIF)" "1"
-	    @echo "BUILD_SIF: $(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(NGC_TF_HPC_REPO):$(SHORT_GIT_HASH)" \
-                          TARGET_NAME="$(NGC_TF_HPC_REPO)-$(SHORT_GIT_HASH)"
-        endif
-endif
-
-ifeq ($(WITH_MPICH),1)
-ROCM57_TORCH13_MPI :=pytorch-1.3-tf-2.10-rocm-mpich
-else
-ROCM57_TORCH13_MPI :=pytorch-1.3-tf-2.10-rocm-ompi
-endif
-export ROCM57_TORCH13_TF_ENVIRONMENT_NAME := $(ROCM_57_PREFIX)$(ROCM57_TORCH13_MPI)
-.PHONY: build-pytorch13-tf210-rocm57
-build-pytorch13-tf210-rocm57:
-	docker build -f Dockerfile-default-rocm \
-		--build-arg BASE_IMAGE="rocm/pytorch:rocm5.7_ubuntu20.04_py3.9_pytorch_1.13.1"\
-		--build-arg TENSORFLOW_PIP="tensorflow-rocm==2.10.1.540" \
-		--build-arg HOROVOD_PIP="horovod==0.28.1" \
-		--build-arg WITH_MPICH=$(WITH_MPICH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM57_TORCH13_TF_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM57_TORCH13_TF_ENVIRONMENT_NAME)-$(VERSION) \
-		.
-
-ifeq ($(WITH_MPICH),1)
-ROCM57_TORCH_MPI :=pytorch-2.0-tf-2.10-rocm-mpich
-else
-ROCM57_TORCH_MPI :=pytorch-2.0-tf-2.10-rocm-ompi
-endif
-export ROCM57_TORCH_TF_ENVIRONMENT_NAME := $(ROCM_57_PREFIX)$(ROCM57_TORCH_MPI)
-.PHONY: build-pytorch20-tf210-rocm57
-build-pytorch20-tf210-rocm57:
-	docker build -f Dockerfile-default-rocm \
-		--build-arg BASE_IMAGE="rocm/pytorch:rocm5.7_ubuntu20.04_py3.9_pytorch_2.0.1" \
-		--build-arg TENSORFLOW_PIP="tensorflow-rocm==2.10.1.540" \
-		--build-arg HOROVOD_PIP="horovod==0.28.1" \
-		--build-arg WITH_MPICH=$(WITH_MPICH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM57_TORCH_TF_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM57_TORCH_TF_ENVIRONMENT_NAME)-$(VERSION) \
-		.
-
-ifeq ($(WITH_MPICH),1)
-ROCM60_TORCH13_MPI :=pytorch-1.3-tf-2.10-rocm-mpich
-else
-ROCM60_TORCH13_MPI :=pytorch-1.3-tf-2.10-rocm-ompi
-endif
-export ROCM60_TORCH13_TF_ENVIRONMENT_NAME := $(ROCM_60_PREFIX)$(ROCM60_TORCH13_MPI)
-.PHONY: build-pytorch13-tf210-rocm60
-build-pytorch13-tf210-rocm60:
-	docker build -f Dockerfile-default-rocm \
-		--build-arg BASE_IMAGE="rocm/pytorch:rocm6.0_ubuntu20.04_py3.9_pytorch_1.13.1" \
-		--build-arg TENSORFLOW_PIP="tensorflow-rocm==2.10.1.540" \
-		--build-arg HOROVOD_PIP="horovod==0.28.1" \
-		--build-arg WITH_MPICH=$(WITH_MPICH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM60_TORCH13_TF_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM60_TORCH13_TF_ENVIRONMENT_NAME)-$(VERSION) \
-		.
-
-ifeq ($(WITH_MPICH),1)
-ROCM60_TORCH_MPI :=pytorch-2.0-tf-2.10-rocm-mpich
-else
-ROCM60_TORCH_MPI :=pytorch-2.0-tf-2.10-rocm-ompi
-endif
-export ROCM60_TORCH_TF_ENVIRONMENT_NAME := $(ROCM_60_PREFIX)$(ROCM60_TORCH_MPI)
-.PHONY: build-pytorch20-tf210-rocm60
-build-pytorch20-tf210-rocm60:
-	docker build -f Dockerfile-default-rocm \
-		--build-arg BASE_IMAGE="rocm/pytorch:rocm6.0_ubuntu20.04_py3.9_pytorch_2.1.1" \
-		--build-arg TENSORFLOW_PIP="tensorflow-rocm==2.10.1.540" \
-		--build-arg HOROVOD_PIP="horovod==0.28.1" \
-		--build-arg WITH_MPICH=$(WITH_MPICH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM60_TORCH_TF_ENVIRONMENT_NAME)-$(SHORT_GIT_HASH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM60_TORCH_TF_ENVIRONMENT_NAME)-$(VERSION) \
-		.
-ifeq ($(WITH_MPICH),1)
-ROCM63_TORCH_MPI :=pytorch-2.4-tf-2.10-rocm-mpich
-else
-ROCM63_TORCH_MPI :=pytorch-2.4-tf-2.10-rocm-ompi
-endif
-
-# From https://hub.docker.com/r/rocm/pytorch/tags
-# rocm/pytorch:rocm6.3.4_ubuntu22.04_py3.10_pytorch_release_2.4.0
-
-ROCM_PT_PREFIX  := rocm/pytorch
-ROCM_VERSION    := rocm6.3.4
-ROCM_UBUNTU     := ubuntu22.04
-PYTHON_VERSION  := py3.10
-ROCM_PT_RELEASE := pytorch_release_2.4.0
-ROCM_PT_VERSION := $(ROCM_VERSION)_$(ROCM_UBUNTU)_$(PYTHON_VERSION)_$(ROCM_PT_RELEASE)
-ROCM_PYTORCH_REPO := $(ROCM_VERSION)-$(PYTHON_VERSION)-pt
-ROCM_PYTORCH_HPC_REPO := $(ROCM_VERSION)-$(PYTHON_VERSION)-pt-hpc
-
-.PHONY: build-pytorch-rocm
-build-pytorch-rocm:
-	docker build -f Dockerfile-pytorch-rocm $(BUILD_OPTS) \
-		--build-arg BASE_IMAGE=$(ROCM_PT_PREFIX):$(ROCM_PT_VERSION) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH) \
-		.
-	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
-		--build-arg "$(NCCL_BUILD_ARG)" \
-		--build-arg "$(XCCL_BUILD_ARG)" \
-		--build-arg "$(MPI_BUILD_ARG)" \
-		--build-arg "$(OFI_BUILD_ARG)" \
-		--build-arg "$(AWS_TRACE_ARG)" \
-		--build-arg "WITH_PT=1" \
-		--build-arg "WITH_TF=0" \
-		--build-arg BASE_IMAGE="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_REPO):$(SHORT_GIT_HASH)" \
-		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH) \
-		.
-ifeq "$(BUILD_SIF)" "1"
-	    @echo "BUILD_SIF: $(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)"
-	    make build-sif TARGET_TAG="$(DOCKERHUB_REGISTRY)/$(ROCM_PYTORCH_HPC_REPO):$(SHORT_GIT_HASH)" \
-                          TARGET_NAME="$(ROCM_PYTORCH_HPC_REPO)-$(SHORT_GIT_HASH)"
-endif
 
 # Build an HPC container using the base image provided by the user.
 # This enables us to append the SS11 bits to an otherwise working
 # user image to make it easier for users to deploy their containers on SS11.
-.PHONY: build-user-spec-rocm
-build-user-spec-rocm:
+.PHONY: rocm
+rocm:
 	@echo "USER_ROCM_BASE_IMAGE: $(USER_ROCM_BASE_IMAGE)"
 	@echo "USER_ROCM_IMAGE_REPO: $(USER_ROCM_IMAGE_REPO)"
 	@echo "USER_ROCM_IMAGE_NAME: $(USER_ROCM_IMAGE_NAME)"
 	@echo "USER_ROCM_IMAGE_VER: $(USER_ROCM_IMAGE_VER)"
 	@echo "USER_ROCM_IMAGE_HPC: $(USER_ROCM_IMAGE_HPC)"
-	@echo "USER_ROCM_IMAGE_SS: $(USER_ROCM_IMAGE_SS)"
-	@echo "USER_ROCM_IMAGE_SIF: $(USER_ROCM_IMAGE_SIF)"
-	docker build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
+	$(DOCKER) build -f Dockerfile-rocm-hpc $(BUILD_OPTS) \
 		--build-arg "$(NCCL_BUILD_ARG)" \
 		--build-arg "$(XCCL_BUILD_ARG)" \
 		--build-arg "$(MPI_BUILD_ARG)" \
 		--build-arg "$(OFI_BUILD_ARG)" \
 		--build-arg "$(AWS_TRACE_ARG)" \
+		--build-arg "$(DEEPSPEED_ARG)" \
 		--build-arg "WITH_PT=1" \
 		--build-arg "WITH_TF=0" \
 		--build-arg BASE_IMAGE="$(USER_ROCM_BASE_IMAGE)" \
 		--build-arg "LIBFABRIC_VERSION=$(LIBFABRIC_VERSION)" \
 		-t $(USER_ROCM_IMAGE_HPC)\
 		.
-ifeq "$(BUILD_SIF)" "1"
-	    @echo "BUILD_SIF: $(USER_ROCM_IMAGE_HPC)"
-	    make build-sif TARGET_TAG="$(USER_ROCM_IMAGE_HPC)" \
-                TARGET_NAME="$(shell echo "$(USER_ROCM_BASE_IMAGE)" | sed s,'/','-',g | sed s,':','-hpc-',g)"
-endif
-
-
-DEEPSPEED_VERSION := 0.8.3
-export TORCH_TB_PROFILER_PIP := torch-tb-profiler==0.4.1
-export GPU_DEEPSPEED_ENVIRONMENT_NAME := $(CUDA_113_PREFIX)pytorch-1.10-deepspeed-$(DEEPSPEED_VERSION)$(GPU_SUFFIX)
-export GPU_GPT_NEOX_DEEPSPEED_ENVIRONMENT_NAME := $(CUDA_113_PREFIX)pytorch-1.10-gpt-neox-deepspeed$(GPU_SUFFIX)
-export TORCH_PIP_DEEPSPEED_GPU := torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
-
-export ROCM57_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED := $(ROCM_57_PREFIX)pytorch-2.0-tf-2.10-rocm-deepspeed
-
-.PHONY: build-pytorch20-tf210-rocm57-deepspeed
-build-pytorch20-tf210-rocm57-deepspeed:
-	DOCKER_BUILDKIT=0 docker build --shm-size='1gb' -f Dockerfile-default-rocm \
-		--build-arg BASE_IMAGE="rocm/pytorch:rocm5.7_ubuntu20.04_py3.9_pytorch_2.1.1" \
-		--build-arg TENSORFLOW_PIP="tensorflow-rocm==2.10.1.540" \
-		--build-arg HOROVOD_PIP="horovod==0.28.1" \
-		--build-arg TORCH_PIP="$(TORCH_PIP_DEEPSPEED_GPU)" \
-		--build-arg TORCH_TB_PROFILER_PIP="$(TORCH_TB_PROFILER_PIP)" \
-		--build-arg TORCH_CUDA_ARCH_LIST="6.0;6.1;6.2;7.0;7.5;8.0" \
-		--build-arg APEX_GIT="https://github.com/determined-ai/apex.git@3caf0f40c92e92b40051d3afff8568a24b8be28d" \
-		--build-arg DEEPSPEED_PIP="deepspeed==$(DEEPSPEED_VERSION)" \
-		--build-arg WITH_MPICH=$(WITH_MPICH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM57_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED)-$(SHORT_GIT_HASH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM57_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED)-$(VERSION) \
-    .
-
-export ROCM60_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED := $(ROCM_60_PREFIX)pytorch-2.0-tf-2.10-rocm-deepspeed
-.PHONY: build-pytorch20-tf210-rocm60-deepspeed
-build-pytorch20-tf210-rocm60-deepspeed:
-	DOCKER_BUILDKIT=0 docker build --shm-size='1gb' -f Dockerfile-default-rocm \
-		--build-arg BASE_IMAGE="rocm/pytorch:rocm6.0_ubuntu20.04_py3.9_pytorch_2.1.1" \
-		--build-arg TENSORFLOW_PIP="tensorflow-rocm==2.10.1.540" \
-		--build-arg HOROVOD_PIP="horovod==0.28.1" \
-		--build-arg TORCH_PIP="$(TORCH_PIP_DEEPSPEED_GPU)" \
-		--build-arg TORCH_TB_PROFILER_PIP="$(TORCH_TB_PROFILER_PIP)" \
-		--build-arg TORCH_CUDA_ARCH_LIST="6.0;6.1;6.2;7.0;7.5;8.0" \
-		--build-arg APEX_GIT="https://github.com/determined-ai/apex.git@3caf0f40c92e92b40051d3afff8568a24b8be28d" \
-		--build-arg DEEPSPEED_PIP="deepspeed==$(DEEPSPEED_VERSION)" \
-		--build-arg WITH_MPICH=$(WITH_MPICH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM60_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED)-$(SHORT_GIT_HASH) \
-		-t $(DOCKERHUB_REGISTRY)/$(ROCM60_TORCH_TF_ENVIRONMENT_NAME_DEEPSPEED)-$(VERSION) \
-    .
-

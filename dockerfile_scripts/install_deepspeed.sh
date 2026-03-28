@@ -45,7 +45,9 @@ elif [ $ARCH_TYPE == "aarch64" ]; then
   export CUDA_DIR="/usr/local/cuda-$cuda_ver_str/targets/sbsa-linux"
 fi
 
+DS_VERSION=0.16.4
+
 #Remove 5.2 from TORCH_CUDA_ARCH_LIST, it is no longer supported by deepspeed
 export TORCH_CUDA_ARCH_LIST=`echo $TORCH_CUDA_ARCH_LIST|sed 's/5.2 //'`
-python -m pip install $DEEPSPEED_PIP --no-binary deepspeed
+python -m pip install "deepspeed==$DS_VERSION" --no-binary deepspeed
 python -m deepspeed.env_report

@@ -23,6 +23,9 @@ then
     rm -rf ${INSTALL_DIR}/verifiable
     ## Build tests/nccl-sanity.c
     make -C ${SCRIPT_DIR}
+
+    ## OSU Benchmark Configuration Option
+    OSU_CONFIG="--enable-cuda --with-cuda-include=/usr/local/cuda/include --with-cuda-libpath=/usr/local/cuda/lib64"
 else
     INSTALL_DIR="${HPC_DIR}/tests/rccl-tests"
     mkdir -p ${INSTALL_DIR}
@@ -39,6 +42,27 @@ else
     rm -rf ${INSTALL_DIR}/verifiable
     rm -rf ${INSTALL_DIR}/src
     rm -rf ${INSTALL_DIR}/hipify
+
+    ## OSU Benchmark Configuration Option
+    OSU_CONFIG="--enable-rocm --with-rocm=/opt/rocm"
 fi
+
+## BUILD OSU Benchmark
+OSU_VER=7.5.2
+cd ${TDIR}
+OSU_REPO="https://mvapich.cse.ohio-state.edu/download/mvapich"
+wget ${OSU_REPO}/osu-micro-benchmarks-${OSU_VER}.tar.gz
+tar -xzf osu-micro-benchmarks-${OSU_VER}.tar.gz --no-same-owner
+cd osu-micro-benchmarks-${OSU_VER}
+./configure CC=${HPC_DIR}/bin/mpicc CXX=${HPC_DIR}/bin/mpicxx \
+        --prefix=${HPC_DIR}/tests \
+	$OSU_CONFIG
+make
+make install
+mv ${HPC_DIR}/tests/libexec/osu-micro-benchmarks ${HPC_DIR}/tests
+rm -rf ${HPC_DIR}/tests/libexec
+
+## Clean-up
 cd /tmp
 rm -rf ${TDIR}
+
