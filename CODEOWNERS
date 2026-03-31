@@ -1,0 +1,13 @@
+# Tag resident experts for different parts of the code
+
+# NGC container builds
+*ngc*       @crickett-hpe
+
+# ROCM container builds
+*rocm*      @karlonw
+
+# NCCL/RCCL/CXI communication
+*ccl*       @ryanhankins
+
+# CI/CI pipeline
+*cicd*      @soohoonchoi
