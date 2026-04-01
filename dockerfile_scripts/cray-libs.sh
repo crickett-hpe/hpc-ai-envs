@@ -24,6 +24,7 @@ mkdir -p $cray_src_dir && \
 
 # Install the cassini headers
 cd $cray_src_dir/shs-cassini-headers && \
+    git checkout release/shs-13.0.0 && \
     cp -r include ${HPC_DIR} && \
     cp -r share ${HPC_DIR} && \
     cp -r share/cassini-headers /usr/share && \
@@ -32,6 +33,7 @@ cd $cray_src_dir/shs-cassini-headers && \
 
 # Install the cxi-driver headers
 cd $cray_src_dir/shs-cxi-driver && \
+    git checkout release/shs-13.0.0 && \
     cp -r include ${HPC_DIR} && \
     cp include/linux/hpe/cxi/cxi.h ${HPC_DIR}/include && \
     cd ../
