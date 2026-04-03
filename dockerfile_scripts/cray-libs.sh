@@ -12,6 +12,8 @@ if [ -d "/opt/amazon" ] ; then
     rm -rf /opt/amazon
 fi
 
+SHS_VERSION="release/shs-13.0.0"
+
 # Install Cray libcxi. This requires grabbing the cassini/cxi headers
 # and installing them into ${HPC_DIR} so we can compile libcxi.
 cray_src_dir=/tmp/cray-libs
@@ -24,7 +26,7 @@ mkdir -p $cray_src_dir && \
 
 # Install the cassini headers
 cd $cray_src_dir/shs-cassini-headers && \
-    git checkout release/shs-13.0.0 && \
+    git checkout ${SHS_VERSION} && \
     cp -r include ${HPC_DIR} && \
     cp -r share ${HPC_DIR} && \
     cp -r share/cassini-headers /usr/share && \
@@ -33,7 +35,7 @@ cd $cray_src_dir/shs-cassini-headers && \
 
 # Install the cxi-driver headers
 cd $cray_src_dir/shs-cxi-driver && \
-    git checkout release/shs-13.0.0 && \
+    git checkout ${SHS_VERSION} && \
     cp -r include ${HPC_DIR} && \
     cp include/linux/hpe/cxi/cxi.h ${HPC_DIR}/include && \
     cd ../
@@ -53,13 +55,8 @@ if [ -d "/opt/rocm" ] ; then
     fi
 fi
 
-## The latest commit on 10/21/25 0f481bca11d46a8b463dcf706f2ec8becd992972
-## is causing error on Castner (GH200) for NCCL and OSU test
-## Using the 8/6/25 commit 4b7fc964bf5065539a631abf425ba5a1a340e5ba seems to work better.
-## Will be filing bug against slingshot
 cd $cray_src_dir/shs-libcxi && \
-    git checkout release/shs-13.0.0 && \
-    git checkout 4b7fc964bf5065539a631abf425ba5a1a340e5ba && \
+    git checkout ${SHS_VERSION} && \
     ./autogen.sh && \
     ./configure --prefix=${HPC_DIR} \
 		CFLAGS="${cxi_cflags}" CPPFLAGS="${cxi_cppflags}" && \
