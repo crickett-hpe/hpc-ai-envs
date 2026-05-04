@@ -91,7 +91,7 @@ RUN git clone https://github.com/NVIDIA/NeMo.git && \
     echo $(git rev-parse HEAD) > /NEMO_COMMIT_HASH.env && \
     pip uninstall -y nemo-toolkit sacrebleu && \
     pip install "cython<3.0.0" && \
-    pip install -e ".[llm]"
+    pip install -e ".[llm]" --use-pep517 --no-build-isolation 
 
 ## 3.1 NeMo-Run
 ARG NEMORUN_REVISION=main
