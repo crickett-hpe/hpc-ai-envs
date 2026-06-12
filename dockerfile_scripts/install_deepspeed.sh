@@ -25,7 +25,7 @@ python -m pip install pydantic
 
 # Install some dependencies for the LLM test
 pip install 'datasets>=3.5.0'
-pip install accelerate arrow huggingface-hub packaging safetensors setuptools tokenizers 'transformers==4.56.2' xxhash evaluate
+pip install accelerate arrow huggingface-hub packaging safetensors setuptools tokenizers 'transformers==4.56.2' xxhash evaluate scikit-learn
 #Precompile deepspeed ops except sparse_attn which has dubious support
 # Skip precompiling since this fails when using the NGC base image.
 # Need to verify that DS can use NCCL correctly for the comms, etc.
