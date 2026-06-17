@@ -1,0 +1,8 @@
+export MODEL_SIZE="405b"
+export TARGET_LOG_PPL="5.6"
+export MIN_LR=8e-7
+export VAL_SAMPLES=5760
+export OPT_LR_DECAY_STEPS=1200000
+export USE_TE_OPS=False
+
+export MODEL_TFLOP_PER_SAMPLE=21508

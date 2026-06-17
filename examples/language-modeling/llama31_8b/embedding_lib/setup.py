@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ setup(
             sources=['custom_embedding/embedding_funcs.cu'],
             extra_compile_args={
                                'cxx': ['-O3',],
-                                'nvcc':['-O3','-U__CUDA_NO_HALF_OPERATORS__', '-U__CUDA_NO_HALF_CONVERSIONS__', "--expt-relaxed-constexpr", "-ftemplate-depth=1024", '-gencode=arch=compute_90,code=sm_90', '-gencode=arch=compute_100,code=sm_100']
+                                'nvcc':['-O3','-U__CUDA_NO_HALF_OPERATORS__', '-U__CUDA_NO_HALF_CONVERSIONS__', "--expt-relaxed-constexpr", "-ftemplate-depth=1024", '-gencode=arch=compute_90,code=sm_90', '-gencode=arch=compute_100,code=sm_100', '-gencode=arch=compute_103,code=sm_103']
                                }
             )
     ],

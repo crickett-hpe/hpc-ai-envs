@@ -1,8 +1,6 @@
 ## Running NVIDIA Large Language Model Llama 3.1 8B PyTorch MLPerf Benchmark
 
 This file contains the instructions for running the NVIDIA Large Language Model Llama 3.1 8B PyTorch MLPerf Benchmark on NVIDIA hardware.
-This example is based on the [mlcommons/training_results_v6.0](https://github.com/mlcommons/training_results_v6.0/tree/main/HPE/benchmarks/llama31_8b/implementations/nemo_arm_ngc26.04) repository.
-Modification have been made to support a run with a singularity image.
 
 ## 1. Hardware Requirements
 
@@ -12,28 +10,19 @@ Modification have been made to support a run with a singularity image.
 
 ## 2. Software Requirements
 
+- Slurm with [Pyxis](https://github.com/NVIDIA/pyxis) and [Enroot](https://github.com/NVIDIA/enroot)
 - [Docker](https://www.docker.com/)
-- Singularity/Apptainer
 
 ## 3. Set up
 
 ### 3.1 Build the container
 
-Build the NGC Pytorch container with the SlingShot support.
-Replace `<version>` with the desired NGC Pytorch Version (26.04) for example.
-
-```bash
-make -C ../../.. BUILD_SIF=0 WITH_NCCL=1 NGC_VERSION=<version> build-pytorch-ngc > build-pytorch-ngc-<version>.txt 2>&1
-```
-If successful, this build will create the docker image: `localhost/cray/ngc-<version>-py3-pt-hpc:<tag>`
-
 Replace `<docker/registry>` with your container registry and build:
 
 ```bash
-docker build --build-arg "FROM_IMAGE_NAME=localhost/cray/ngc-<version>-py3-pt-hpc:<tag>" --file Dockerfile --tag <docker/registry>/mlperf-nv-hpc:llama31_8b-pyt .
-docker save -o mlperf-nv-hpc-llama31-8b-pyt.tar <docker/registry>/mlperf-nv-hpc:llama31_8b-pyt
-env APPTAINER_NOHTTPS=true NAMESPACE="" singularity build mlperf-nv-hpc-llama31-8b-pyt.sif docker-archive://mlperf-nv-hpc-llama31-8b-pyt.tar
-export CONT=<path/to/singularity_image>
+docker build -t <docker/registry>/mlperf-nvidia:llama31_8b-pyt .
+# optionally: docker push <docker/registry>/mlperf-nvidia:llama31_8b-pyt
+export CONT=<docker/registry>/mlperf-nvidia:llama31_8b-pyt
 ```
 
 make sure that container is accessible on your Slurm system.
@@ -79,7 +68,7 @@ $tree 8b/
 
 #### 3.3.1 Publication/Attribution
 
-[Megatron](https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/nlp/nemo_megatron/intro.html) is a large, powerful transformer developed by the Applied Deep Learning Research team at NVIDIA. This repository uses [NeMo Megatron](https://github.com/NVIDIA/NeMo). NeMo Megatron GPT has been integrated with [NVIDIA Transformer Engine](https://github.com/NVIDIA/TransformerEngine). Transformer Engine enables FP8 training on NVIDIA Hopper GPUs.
+[Megatron](https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/nlp/nemo_megatron/intro.html) is a large, powerful transformer developed by the Applied Deep Learning Research team at NVIDIA. This repository uses [NeMo Megatron](https://github.com/NVIDIA/NeMo). NeMo Megatron GPT has been integrated with [NVIDIA Transformer Engine](https://github.com/NVIDIA/TransformerEngine). Transformer Engine enables FP4/FP8 training on NVIDIA GPUs.
 
 #### 3.3.2 List of Layers
 
@@ -91,15 +80,16 @@ The LLama3.1 8B is trained from scratch and is not using a checkpoint.
 
 ## 4. Launch training
 
-For training, we use Slurm with Apptainer, and Slurm's MPI support to run our container.
+For training, we use Slurm with the Pyxis extension, and Slurm's MPI support to run our container.
 
 Navigate to the directory where `run.sub` is stored.
 
 The launch command structure:
 ```bash
+export LOGDIR=</path/to/output/dir>  # set the place where the output logs will be saved
 export DATADIR=<as/set/above>
 export CONT=<as/set/above>
-source config_EX4000_8x4x1xtp1pp1cp1_8b.sh  # select config and source it
+source config_GB200_2x4x2xtp1pp1cp1_8b.sh  # select config and source it
 sbatch -N ${DGXNNODES} --time=${WALLTIME} run.sub  # you may be required to set --account and --partition here
 ```
 

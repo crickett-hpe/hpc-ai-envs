@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2025, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2025-2026, NVIDIA CORPORATION. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,10 +52,10 @@ set -e
 [ "${DEBUG}" = "0" ] && set -x
 
 # Vars without defaults
-: "${SEED:?SEED not set}"
 : "${WALLTIME:=?WALLTIME not set}"
 
 # Vars with defaults
+: "${SEED:=$RANDOM}"
 : "${MULTI_NODE:=''}"
 : "${UNITTEST:=0}"
 
@@ -117,7 +117,8 @@ fi
 if [ "${TRAIN_ONLY:-0}" -eq 1 ]; then
   EXTRA_ARGS+=" data_prefix@model.data.data_prefix=train_only_c4"
 elif [ "${USE_SYNTHETIC_DATA:-0}" -eq 1 ]; then
-  EXTRA_ARGS+=" data_prefix@model.data.data_prefix=synthetic"
+  export MOCK_DATASET="True"
+  EXTRA_ARGS+=" data_prefix@model.data.data_prefix=synthetic model.tokenizer.model= "
 fi
 
 [ "$INTERLEAVED_PIPELINE" == "0" ] && export INTERLEAVED_PIPELINE=null
@@ -146,7 +147,7 @@ if [ "${PRINT_CONFIG_ONLY:-False}" = True ]; then
 fi
 
 if [ ${NVTX_FLAG} -gt 0 ]; then
-  NSYSCMD=" nsys profile --sample=none --cpuctxsw=none --trace=cuda,nvtx --cuda-graph-trace=node --force-overwrite true --capture-range=cudaProfilerApi --capture-range-end=stop --output ${NSYS_PREFIX}${SLURM_PROCID}${NSYS_SUFFIX}"
+  NSYSCMD=" nsys profile --sample=none --cpuctxsw=none --trace=cuda-sw,nvtx --cuda-graph-trace=node --force-overwrite true --capture-range=cudaProfilerApi --capture-range-end=stop --output ${NSYS_PREFIX}${SLURM_PROCID}${NSYS_SUFFIX}"
   if [ ${NSYS_METRICS} -gt 0 ]; then
     NSYSCMD="${NSYSCMD} --gpu-metrics-devices=${LOCAL_RANK} --gpu-metrics-set=${NSYS_METRICS_SET} --gpu-metrics-frequency=50000"
   fi
@@ -159,7 +160,7 @@ declare -a CMD
 
 if [[ ${LOCAL_WORLD_SIZE} -gt 1 ]]; then
     # Mode 1: Slurm launched a task for each GPU and set some envvars
-    CMD=( ${NSYSCMD} 'python' '-u')
+    CMD=( ${NSYSCMD} ${BINDCMD:-} 'python' '-u')
 else
     # interactive run on single node, no need to bind
     CMD=( ${NSYSCMD} 'torchrun' "--nproc_per_node=${DGXNGPU}" )
@@ -178,7 +179,7 @@ fi
 
 [[ "$RANK" -eq 0 ]] && echo "Extra args: $EXTRA_ARGS"
 
-CUDA_COREDUMP_FILE=/results/llama31.%h.%p ${LOGGER:-} ${BINDCMD:-} ${CMD[@]} /workspace/llm/pretrain.py \
+CUDA_COREDUMP_FILE=/results/llama31.%h.%p ${LOGGER:-} ${CMD[@]} /workspace/llm/pretrain.py \
 	$EXTRA_ARGS \
 	; ret_code=$?
 
