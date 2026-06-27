@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +34,9 @@ if [[ "${USE_SYNTHETIC_DATA:-0}" -eq 0 ]]; then
     mounts_to_verify="PREPROC_DATA:/preproc_data"
     if [[ -n "${LOAD_CHECKPOINTS_PATH:-}" ]]; then
         _cont_mounts="${_cont_mounts},${LOAD_CHECKPOINTS_PATH}:/load_checkpoints:ro"
-        mounts_to_verify="${mounts_to_verify} LOAD_CHECKPOINT_405B:/load_checkpoints/405b"
+    fi
+    if [[ -n "${LOAD_CHECKPOINT:-}" ]]; then
+        mounts_to_verify="${mounts_to_verify} CHECKPOINT:${LOAD_CHECKPOINT}"
     fi
     if [[ -n "${CHECKPOINTS_DIR:-}" ]] && [[ ${RUN_ONLY_NCCL} -eq 0 ]]; then
         _cont_mounts="${_cont_mounts},${CHECKPOINTS_DIR}:/results/${NEMO_RESULTS_SUBDIR}/checkpoints"

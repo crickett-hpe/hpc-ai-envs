@@ -1,4 +1,4 @@
-# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2024-2026, NVIDIA CORPORATION. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,62 +13,84 @@
 # limitations under the License.
 
 import os
-import logging
-from math import floor, ceil
-
-
-def get_rank():
-    return int(os.getenv("SLURM_PROCID", 0))
-
-
-class RankZeroFilter(logging.Filter):
-    def filter(self, record):
-        return get_rank() == 0
-
-
-root = logging.getLogger()
-root.addFilter(RankZeroFilter())
-
-
-import warnings
+from dataclasses import dataclass
+from math import ceil
+from typing import Callable
 
 import hydra
 import torch
-from pytorch_lightning.utilities import rank_zero_only
+import utils
+from callback_logging import DeltaTimingCallback, MLPerfLoggingCallback, mllogger
+from callback_warmup import WarmupCallback, create_mock_dataset_config
+from megatron.bridge.models.gpt_provider import GPTModelProvider
+from megatron.bridge.training.config import (
+    CheckpointConfig,
+    CommOverlapConfig,
+    ConfigContainer,
+    DistributedDataParallelConfig,
+    DistributedInitConfig,
+    GPTDatasetConfig,
+    LoggerConfig,
+    MixedPrecisionConfig,
+    OptimizerConfig,
+    ProfilingConfig,
+    RerunStateMachineConfig,
+    RNGConfig,
+    SchedulerConfig,
+    TrainingConfig,
+    ValidationConfig,
+)
+from megatron.bridge.training.gpt_step import forward_step
+from megatron.bridge.training.pretrain import pretrain
+from megatron.bridge.training.tokenizers.config import TokenizerConfig
+from omegaconf import OmegaConf
 
-torch.cuda.set_device(int(os.getenv("SLURM_LOCALID", "0")))
 
-import nemo.lightning as nl
-from custom_callbacks import (
-    DeltaTimingCallback,
-    MetricsLogger,
-    PrintArtifacts,
-    setup_auxiliary_loggers,
-    MemoryProfileCallback,
-)
-from megatron.core.distributed import DistributedDataParallelConfig
-from megatron.core.optimizer import OptimizerConfig
-from mlperf_common.callbacks import mllogger
-from mocking import MockDataModuleWithBatchLimit, MockTokenizer
-from nemo.collections.common.tokenizers import AutoTokenizer
-from nemo.collections.llm.api import train
-from nemo.collections.llm.gpt.data import PreTrainingDataModule
-from nemo.collections.llm.gpt.model import LlamaModel
-from nemo.collections.llm.gpt.model.llama import (
-    Llama31Config8B,
-    Llama31Config70B,
-    Llama31Config405B,
-)
-from nemo.lightning.pytorch.callbacks import GarbageCollectionCallback, NsysCallback
-from nemo.lightning.pytorch.optim import (
-    CosineAnnealingScheduler,
-    MegatronOptimizerModule,
-)
-from nemo.lightning.pytorch.plugins.mixed_precision import MegatronMixedPrecision
-from nemo.utils import logging
-from omegaconf.omegaconf import OmegaConf
+@dataclass
+class Llama31ModelProvider(GPTModelProvider):
+    normalization: str = "RMSNorm"
+    activation_func: Callable = torch.nn.functional.silu
+    gated_linear_unit: bool = True
+    position_embedding_type: str = "rope"
+    add_bias_linear: bool = False
+    attention_dropout: float = 0.0
+    hidden_dropout: float = 0.0
+    share_embeddings_and_output_weights: bool = False
+    bias_activation_fusion: bool = True
+    masked_softmax_fusion: bool = True
+    persist_layer_norm: bool = True
+    bias_dropout_fusion: bool = True
+    apply_rope_fusion: bool = True
+    rotary_percent: float = 1.0
+    rotary_base: int = 500_000
+    rope_scaling: bool = True
+    rope_scaling_factor: float = 8.0
+    init_method_std: float = 0.01
+    layernorm_epsilon: float = 1e-05
+    num_query_groups: int = 8
+    init_method_std: float = 0.02
+    std: float = 0.02
+    embedding_init_method_std: float = 0.02
+
+
+@dataclass
+class Llama31ModelProvider8B(Llama31ModelProvider):
+    num_layers: int = 32
+    hidden_size: int = 4096
+    ffn_hidden_size: int = 14336
+    num_attention_heads: int = 32
+
+
+@dataclass
+class Llama31ModelProvider405B(Llama31ModelProvider):
+    num_layers: int = 126
+    hidden_size: int = 16384
+    ffn_hidden_size: int = 53248
+    num_attention_heads: int = 128
+
 
 OmegaConf.register_new_resolver("add", lambda x, y: x + y)
+OmegaConf.register_new_resolver("multiply", lambda x, y: x * y)
 OmegaConf.register_new_resolver("ceil_div", lambda x, y: (x + y - 1) // y)
 OmegaConf.register_new_resolver("floor_div", lambda x, y: x // y)
 OmegaConf.register_new_resolver("div", lambda x, y: x / y)
@@ -81,117 +103,97 @@ OmegaConf.register_new_resolver("min", lambda x, y: min(x, y))
 OmegaConf.register_new_resolver("floor", lambda x: int(x // 1))
 
 
-# ================ Components ================
-# ======== Data ========
-
-
-def mock_data(config, for_warmup=False):
-    # Parameters
-    gbs = config.model.global_batch_size
-    mbs = config.model.micro_batch_size
-    seq_length = config.model.encoder_seq_length
-    tokenizer_path = config.model.tokenizer.model
-
-    tokenizer = None
-    if tokenizer_path != "":
-        tokenizer = AutoTokenizer(pretrained_model_name=tokenizer_path)
-    else:
-        tokenizer = MockTokenizer(
-            vocab_size=config.model.data.mock_tokenizer_vocab_size
-        )
-    if for_warmup:
-        return MockDataModuleWithBatchLimit(
-            global_batch_size=gbs,
-            micro_batch_size=mbs,
-            tokenizer=tokenizer,
-            seq_length=seq_length,
-            num_workers=8,
-        )
-
-    num_train_samples = int(config.trainer.max_steps * gbs)
-    eval_iters = (
-        config.trainer.max_steps // config.trainer.val_check_interval + 1
-    ) * config.trainer.limit_val_batches
-    num_val_samples = int(eval_iters * gbs)
-    num_test_samples = int(config.trainer.limit_test_batches * gbs)
-
-    return MockDataModuleWithBatchLimit(
-        global_batch_size=gbs,
-        micro_batch_size=mbs,
-        tokenizer=tokenizer,
-        seq_length=seq_length,
-        num_workers=8,
-        num_train_samples=num_train_samples,
-        num_val_samples=num_val_samples,
-        num_test_samples=num_test_samples,
-    )
-
-
 def get_data(config):
-    # Parameters
-    gbs = config.model.global_batch_size
-    mbs = config.model.micro_batch_size
-    seq_length = config.model.encoder_seq_length
-    tokenizer_path = config.model.tokenizer.model
-    seed = config.model.seed
+    if config.model.data.mock_dataset:
+        return create_mock_dataset_config(config)
 
-    tokenizer = AutoTokenizer(pretrained_model_name=tokenizer_path)
-
+    r = [6] if config.model.base_config == "8b" else [6, 7]
+    train_datasets = [f"/preproc_data/c4-train.en_{idx}_text_document" for idx in r]
+    train_datasets_weights = [50] * len(r)
     val_test_path = "/preproc_data/c4-validation-91205-samples.en_text_document"
 
-    if config.model.base_config == "8b":
-        r = [6]
-    elif config.model.base_config == "405b":
-        r = [6, 7]
-    train_datasets = sum(
-        [
-            ["50", f"/preproc_data/c4-train.en_{idx}_text_document"]
-            for idx in r
-        ],
-        [],
-    )
-    data_paths = {
-        "train": train_datasets,
-        "validation": [
-            val_test_path,
-        ],
-        "test": [
-            val_test_path,
-        ],
-    }
+    data_paths = [(train_datasets, train_datasets_weights), ([val_test_path], None), ([val_test_path], None)]
 
-    return PreTrainingDataModule(
-        tokenizer=tokenizer,
-        paths=data_paths,
-        num_workers=8,  # TODO: make it configurable
-        seq_length=seq_length,
-        global_batch_size=gbs,
-        micro_batch_size=mbs,
-        index_mapping_dir="/npy_index",
-        seed=seed,
-        # Option to reset the position IDs in the dataset at an interval.
+    return GPTDatasetConfig(
+        blend_per_split=data_paths,
+        sequence_length=config.model.encoder_seq_length,
+        random_seed=config.model.seed,
+        dataloader_type="single",
+        num_workers=config.model.data.num_workers,
+        path_to_cache="/npy_index",
+        defer_npy_index_mmap=True,
+        fast_cache_load=True,
         reset_position_ids=False,
-        # Option to reset the attention mask from the dataset.
         reset_attention_mask=False,
-        # Option to enable the EOD mask loss.
         eod_mask_loss=False,
-        # Rampup batch size, should be in format of [start_global_batch_size, batch_size_increment, ramup_samples].
-        rampup_batch_size=None,
+        create_attention_mask=False,
     )
 
 
-# ======== Model ========
-
-
-def get_model_with_precision(config, tokenizer):
+def get_model(config):
     base_config = config.model.base_config
-    seq_length = config.model.encoder_seq_length
-    customized_config = config.model.overwritten_attributes
+    model_provider = Llama31ModelProvider8B if base_config == "8b" else Llama31ModelProvider405B
 
-    # overwrites VP
-    overwritten_vp = config.model.virtual_pipeline_model_parallel_size
+    tp = config.model.tensor_model_parallel_size
+    ep = config.model.expert_model_parallel_size
+    pp = config.model.pipeline_model_parallel_size
+    pp_dtype = torch.bfloat16 if config.model.pipeline_model_parallel_size != 1 else None
+    vp = config.model.virtual_pipeline_model_parallel_size
+    cp = config.model.context_parallel_size
+    sp = config.model.sequence_parallel
+    # WAR for Megatron constraint: ETP * EP * PP must equal TP * CP * PP
+    # for DP-last mapping compatibility.
+    etp = tp * cp // ep
+    asym_pp_embed = config.model.account_for_embedding_in_pipeline_split
+    asym_pp_loss = config.model.account_for_loss_in_pipeline_split
+    if config.model.overwritten_attributes.enable_cuda_graph:
+        cuda_graph_impl = "local"
+    else:
+        cuda_graph_impl = "none"
 
-    assert not (config.model.fp8 and config.model.fp4), "fp8 and fp4 cannot be enabled at the same time"
+    if config.model.overwritten_attributes.num_layers is not None:
+        num_layers = config.model.overwritten_attributes.num_layers
+        config.model.resume_from_checkpoint = None
+    elif config.model.base_config == "405b":
+        num_layers = 126
+    else:
+        num_layers = 32
+
+    return model_provider(
+        # Parallelism configuration
+        tensor_model_parallel_size=tp,
+        pipeline_model_parallel_size=pp,
+        virtual_pipeline_model_parallel_size=vp,
+        expert_tensor_parallel_size=etp,
+        context_parallel_size=cp,
+        sequence_parallel=sp,
+        # Pipeline configuration
+        pipeline_dtype=pp_dtype,
+        account_for_embedding_in_pipeline_split=asym_pp_embed,
+        account_for_loss_in_pipeline_split=asym_pp_loss,
+        # Model configuration
+        num_layers=num_layers,
+        seq_length=config.model.encoder_seq_length,
+        init_model_with_meta_device=config.model.mcore_fsdp,
+        # Optimization features
+        cross_entropy_loss_fusion=config.model.cross_entropy_loss_fusion,
+        cross_entropy_fusion_impl=config.model.cross_entropy_fusion_impl,
+        cuda_graph_impl=cuda_graph_impl,
+        cuda_graph_scope=config.model.overwritten_attributes.cuda_graph_scope,
+        fused_single_qkv_rope=config.model.fused_single_qkv_rope,
+        gradient_accumulation_fusion=config.model.gradient_accumulation_fusion,
+        tp_only_amax_red=config.model.tp_only_amax_red,
+        use_te_rng_tracker=config.model.use_te_rng_tracker,
+        use_transformer_engine_op_fuser=config.model.use_transformer_engine_op_fuser,
+        cuda_graph_warmup_steps=config.model.custom.cuda_graph_warmup_steps,
+        # CPU offloading
+        cpu_offloading=config.model.cpu_offloading,
+        cpu_offloading_num_layers=config.model.cpu_offloading_num_layers,
+        cpu_offloading_weights=False,
+    )
+
+
+def get_mixed_precision(config):
     # fp8 knobs:
     fp8_type = None
     if config.model.fp8:
@@ -199,7 +201,6 @@ def get_model_with_precision(config, tokenizer):
     fp8_margin = 0
     fp8_amax_history_len = config.model.fp8_amax_history_len
     fp8_amax_compute_algo = config.model.fp8_amax_compute_algo
-    tp_only_amax_red = config.model.tp_only_amax_red
     fp8_param_gather = config.model.optim.fp8_param_gather
     fp8_recipe = config.model.fp8_recipe
     # fp4 knobs:
@@ -207,59 +208,14 @@ def get_model_with_precision(config, tokenizer):
     if config.model.fp4:
         fp4_type = "e2m1"
     fp4_recipe = config.model.fp4_recipe
-    
+
     first_last_layers_bf16 = config.model.first_last_layers_bf16
     num_layers_at_start_in_bf16 = config.model.num_layers_at_start_in_bf16
     num_layers_at_end_in_bf16 = config.model.num_layers_at_end_in_bf16
 
-    # Model part
-    base_llama_config = None
-    if base_config == "8b":
-        base_llama_config = Llama31Config8B(
-            seq_length=seq_length,
-            gradient_accumulation_fusion=config.model.gradient_accumulation_fusion,
-        )
-    elif base_config == "70b":
-        base_llama_config = Llama31Config70B(seq_length=seq_length)
-    elif base_config == "405b":
-        base_llama_config = Llama31Config405B(
-            fp8=fp8_type,
-            fp8_recipe=fp8_recipe,  # Must be set during init so Fiddle captures it correctly
-            seq_length=seq_length,
-            num_layers=(
-                customized_config.num_layers
-                if customized_config.num_layers is not None
-                else 126
-            ),
-            gradient_accumulation_fusion=config.model.gradient_accumulation_fusion,
-        )
-    else:
-        assert False, "Unsupported base config type: " + base_config
-
-    if overwritten_vp is not None:
-        base_llama_config.virtual_pipeline_model_parallel_size = overwritten_vp
-
-    if fp8_type is not None:
-        base_llama_config.fp8 = fp8_type
-        base_llama_config.fp8_margin = fp8_margin
-        base_llama_config.fp8_amax_history_len = fp8_amax_history_len
-        base_llama_config.fp8_amax_compute_algo = fp8_amax_compute_algo
-        base_llama_config.tp_only_amax_red = tp_only_amax_red
-
-    base_llama_config.enable_cuda_graph = customized_config.enable_cuda_graph
-    base_llama_config.cuda_graph_scope = customized_config.cuda_graph_scope
-    base_llama_config.use_transformer_engine_op_fuser = config.model.use_transformer_engine_op_fuser
-    base_llama_config.cross_entropy_fusion_impl = config.model.cross_entropy_fusion_impl
-    base_llama_config.fused_single_qkv_rope = config.model.fused_single_qkv_rope
-    base_llama_config.fp8_dot_product_attention = config.model.fp8_dot_product_attention
-    model = LlamaModel(config=base_llama_config, tokenizer=tokenizer)
-    model.cross_entropy_loss_fusion = config.model.cross_entropy_loss_fusion
-
-    precision = None
-    # Precision part
-    if config.model.fp8 or config.model.fp4:  # FP8 or FP4 takes precedences
-        precision = MegatronMixedPrecision(
-            precision="bf16-mixed",
+    if config.model.fp8 or config.model.fp4:
+        mixed_precision = MixedPrecisionConfig(
+            bf16=True,
             params_dtype=torch.bfloat16,
             pipeline_dtype=torch.bfloat16,
             autocast_enabled=False,
@@ -271,209 +227,177 @@ def get_model_with_precision(config, tokenizer):
             fp8_amax_history_len=fp8_amax_history_len,
             fp8_amax_compute_algo=fp8_amax_compute_algo,
             fp8_param_gather=fp8_param_gather,
+            fp8_dot_product_attention=config.model.fp8_dot_product_attention,
             # fp4
-            #fp4=fp4_type,
-            #fp4_recipe=fp4_recipe,
+            fp4=fp4_type,
+            fp4_recipe=fp4_recipe,
+            # First/last layers in bf16
             first_last_layers_bf16=first_last_layers_bf16,
             num_layers_at_start_in_bf16=num_layers_at_start_in_bf16,
             num_layers_at_end_in_bf16=num_layers_at_end_in_bf16,
-            fp8_dot_product_attention = config.model.fp8_dot_product_attention
         )
-    elif config.trainer.precision == "bf16":
-        precision = MegatronMixedPrecision(
+    else:
+        mixed_precision = MixedPrecisionConfig(
             precision="bf16-mixed",
             params_dtype=torch.bfloat16,
             pipeline_dtype=torch.bfloat16,
             autocast_enabled=False,
             grad_reduce_in_fp32=False,
         )
-    else:
-        assert False, f"Unsupported precision {config.trainer.precision}"
 
-    return model, precision
+    return mixed_precision
 
 
-def get_optimizer(config):
-    # Optimizer params
-    lr = config.model.optim.lr
-    bf16 = config.trainer.precision == "bf16"
-    fp16 = config.trainer.precision == "fp16"
-
-    # Scheduler params
-    warmup_steps = config.model.optim.sched.warmup_steps
-    min_lr = config.model.optim.sched.min_lr
-
-    optimizer_config = OptimizerConfig(
-        optimizer="adam",
-        lr=lr,
-        # TODO: make all of them configurable?
-        weight_decay=0.1,
-        bf16=bf16,
-        fp16=fp16,
-        adam_beta1=0.9,
-        adam_beta2=0.95,
-        adam_eps=1e-5,
-        use_distributed_optimizer=True,
-        clip_grad=1.0,
-    )
-
-    sched = CosineAnnealingScheduler(
-        warmup_steps=warmup_steps,
-        constant_steps=0,
-        min_lr=min_lr,
-    )
-
-    return MegatronOptimizerModule(config=optimizer_config, lr_scheduler=sched)
-
-
-# ======== Trainer related ========
-
-
-def get_strategy(config):
-    from megatron.core.dist_checkpointing.validation import StrictHandling
-
-    tp = config.model.tensor_model_parallel_size
-    ep = config.model.expert_model_parallel_size
-    pp = config.model.pipeline_model_parallel_size
-    pp_dtype = (
-        torch.bfloat16 if config.model.pipeline_model_parallel_size != 1 else None
-    )
-    vp = config.model.virtual_pipeline_model_parallel_size
-    cp = config.model.context_parallel_size
-    sp = config.model.sequence_parallel
-    # WAR for Megatron constraint: ETP * EP * PP must equal TP * CP * PP 
-    # for DP-last mapping compatibility.
-    etp = tp * cp // ep
-
-    asym_pp_embed = config.model.account_for_embedding_in_pipeline_split
-    asym_pp_loss = config.model.account_for_loss_in_pipeline_split
-
-    use_tp_pp_dp_mapping = config.model.use_tp_pp_dp_mapping
-    ckpt_dist_load = config.model.dist_ckpt_parallel_load
-
+def get_ddp_config(config):
     overlap_grad_reduce = config.model.optim.overlap_grad_reduce
     overlap_param_gather = config.model.optim.overlap_param_gather
     align_param_gather = config.model.optim.align_param_gather
     use_distributed_optimizer = config.model.optim.use_distributed_optimizer
     bucket_size = config.model.optim.bucket_size
+    num_distributed_optimizer_instances = config.model.optim.num_distributed_optimizer_instances
     fp8_param_gather = config.model.optim.fp8_param_gather
-    use_te_rng_tracker = (config.model.use_te_rng_tracker,)
-    nccl_communicator_config_path=config.model.nccl_communicator_config_path
-    
-    # PLT moves model to CPU at the end of training which takes some time
-    # This patch removes that move
-    def teardown_patch(self):
-        return
-    nl.MegatronStrategy.teardown = teardown_patch
-    
-    return nl.MegatronStrategy(
-        tensor_model_parallel_size=tp,
-        pipeline_model_parallel_size=pp,
-        pipeline_dtype=pp_dtype,
-        virtual_pipeline_model_parallel_size=vp,
-        expert_tensor_parallel_size=etp,
-        context_parallel_size=cp,
-        use_te_rng_tracker=use_te_rng_tracker,
-        sequence_parallel=sp,
-        use_tp_pp_dp_mapping=use_tp_pp_dp_mapping,
+    nccl_ub_dp = config.model.optim.nccl_ub_dp
+    outer_dp_sharding_strategy = config.model.optim.outer_dp_sharding_strategy
+    fsdp_manual_registration = config.model.optim.fsdp_manual_registration
+
+    return DistributedDataParallelConfig(
+        check_for_nan_in_grad=False,
+        grad_reduce_in_fp32=False,
+        average_in_collective=False,
+        bucket_size=bucket_size,
+        # Overlap
+        overlap_grad_reduce=overlap_grad_reduce,
+        overlap_param_gather=overlap_param_gather,
+        align_param_gather=align_param_gather,
+        # Distributed optimizer
+        use_distributed_optimizer=use_distributed_optimizer,
+        num_distributed_optimizer_instances=num_distributed_optimizer_instances,
+        data_parallel_sharding_strategy="optim_grads_params",
+        outer_dp_sharding_strategy=outer_dp_sharding_strategy,
+        # FP8
+        fp8_param_gather=fp8_param_gather,
+        keep_fp8_transpose_cache=False,
+        # FSDP
+        fsdp_double_buffer=nccl_ub_dp,
+        use_megatron_fsdp=config.model.mcore_fsdp,
+        # NCCL
+        nccl_ub=nccl_ub_dp,
+        fsdp_manual_registration=fsdp_manual_registration,
+    )
+
+
+def get_dist_config(config):
+    nccl_communicator_config_path = config.model.nccl_communicator_config_path
+
+    # Using FSDP in MBridge requires Gloo process groups.
+    # https://github.com/NVIDIA-NeMo/Megatron-Bridge/blob/4f21a31d7c859548d62dc1b0a63a325349ce1a93/src/megatron/bridge/training/config.py#L1274-L1280
+    use_gloo_process_groups = config.model.mcore_fsdp
+
+    return DistributedInitConfig(
         nccl_communicator_config_path=nccl_communicator_config_path,
-        account_for_embedding_in_pipeline_split=asym_pp_embed,
-        account_for_loss_in_pipeline_split=asym_pp_loss,
-        gradient_as_bucket_view=True,
-        ckpt_load_optimizer=not fp8_param_gather, # handle case when the precision of checkpoints is higher than model params
-        ckpt_load_main_params=fp8_param_gather, # handle case when the precision of checkpoints is higher than model params
-        ckpt_async_save=True,
-        ckpt_load_strictness=StrictHandling.LOG_ALL,
-        ckpt_parallel_load=ckpt_dist_load,
-        ddp=DistributedDataParallelConfig(
-            check_for_nan_in_grad=False,
-            grad_reduce_in_fp32=False,
-            overlap_grad_reduce=overlap_grad_reduce,
-            overlap_param_gather=overlap_param_gather,
-            align_param_gather=align_param_gather,
-            use_distributed_optimizer=use_distributed_optimizer,
-            bucket_size=bucket_size,
-            average_in_collective=True,
-            fp8_param_gather=fp8_param_gather,
-        ),
+        use_tp_pp_dp_mapping=config.model.use_tp_pp_dp_mapping,
+        use_sharp=config.model.sharp,
+        use_gloo_process_groups=use_gloo_process_groups,
     )
 
 
-def get_trainer(config, precision_plugin, strategy, warmup_config_overwrite=False):
-    num_nodes = config.trainer.num_nodes
-    devices = config.trainer.devices
-
-    limit_train_batches = config.trainer.limit_train_batches
-    limit_test_batches = config.trainer.limit_test_batches
-    limit_val_batches = config.trainer.limit_val_batches
-    max_steps = config.trainer.max_steps
-
-    log_every_n_steps = config.trainer.log_every_n_steps
-    val_check_interval = config.trainer.val_check_interval
-    num_sanity_val_steps = config.trainer.num_sanity_val_steps
-
-    enable_progress_bar = config.trainer.enable_progress_bar
-
-    if warmup_config_overwrite:
-        # max_steps = config.model.custom.warmup_train_steps
-        limit_train_batches = 192
-        limit_test_batches = 1
-        limit_val_batches = 0
-        log_every_n_steps = 1
-        max_steps = 5
-        val_check_interval = 100
-        num_sanity_val_steps = 5
-
-    return nl.Trainer(
-        accelerator="gpu",
-        num_nodes=num_nodes,
-        devices=devices,
-        callbacks=[],
-        accumulate_grad_batches=1,
-        limit_train_batches=limit_train_batches,
-        limit_test_batches=limit_test_batches,
-        limit_val_batches=limit_val_batches,
-        log_every_n_steps=log_every_n_steps,
-        val_check_interval=val_check_interval,
-        num_sanity_val_steps=num_sanity_val_steps,
-        max_steps=max_steps,
-        plugins=precision_plugin,
-        strategy=strategy,
-        use_distributed_sampler=False,
-        enable_checkpointing=False,
-        logger=False,
-        benchmark=False,
-        enable_model_summary=True,
-        enable_progress_bar=enable_progress_bar,
+def get_optimizer_config(config):
+    return OptimizerConfig(
+        optimizer="adam",
+        lr=config.model.optim.lr,
+        weight_decay=0.1,
+        bf16=config.trainer.precision == "bf16",
+        fp16=config.trainer.precision == "fp16",
+        adam_beta1=0.9,
+        adam_beta2=0.95,
+        adam_eps=1e-5,
+        use_distributed_optimizer=True,
+        clip_grad=1.0,
+        min_lr=config.model.optim.sched.min_lr,
     )
 
 
-def get_logger(config):
-    save_last = config.exp_manager.checkpoint_callback_params.save_last
-    save_top_k = config.exp_manager.save_top_k
-    every_n_epochs = config.exp_manager.every_n_epochs
+def get_scheduler_config(config):
+    if config.model.base_config == "405b":
+        decay_steps = ceil(
+            int(os.environ.get("OPT_LR_DECAY_STEPS", 0)) * 1152.0 / config.model.global_batch_size
+        ) - int(config.model.optim.sched.warmup_steps)
+    else:
+        decay_steps = int(os.environ.get("OPT_LR_DECAY_STEPS", 0)) - int(config.model.optim.sched.warmup_steps)
 
-    name = config.model.name
-    log_dir = config.exp_manager.explicit_log_dir
-
-    ckpt = nl.ModelCheckpoint(
-        save_last=save_last,
-        save_top_k=save_top_k,
-        every_n_epochs=every_n_epochs,
+    return SchedulerConfig(
+        lr_decay_style="cosine",
+        lr_decay_iters=decay_steps,
+        lr_warmup_iters=config.model.optim.sched.warmup_steps,
+        start_weight_decay=0.1,
+        end_weight_decay=0.1,
     )
 
-    return nl.NeMoLogger(
-        ckpt=ckpt, name=name, tensorboard=None, wandb=None, log_dir=log_dir
+
+def get_train_config(config):
+    return TrainingConfig(
+        global_batch_size=config.model.global_batch_size,
+        micro_batch_size=config.model.micro_batch_size,
+        rampup_batch_size=None,
+        train_iters=config.trainer.max_steps,
     )
 
 
-def get_overlap_callback(config):
-    ub_tp_comm_overlap = config.model.ub_tp_comm_overlap
+def get_validation_config(config):
+    return ValidationConfig(
+        eval_interval=config.trainer.val_check_interval,
+        eval_iters=config.trainer.eval_iters,
+    )
 
-    # Performance knobs
-    userbuffer_config = None
-    if ub_tp_comm_overlap:
-        from nemo.collections.llm.recipes.tp_overlap_configs.userbuffers import (
+
+def get_tokenizer_config(config):
+    if config.model.data.mock_dataset:
+        vocab_size = config.model.data.mock_tokenizer_vocab_size
+        return TokenizerConfig(tokenizer_type="NullTokenizer", vocab_size=vocab_size)
+
+    return TokenizerConfig(
+        tokenizer_type="HuggingFaceTokenizer",
+        tokenizer_model=config.model.tokenizer.model,
+        hf_tokenizer_kwargs={"use_fast": True},
+    )
+
+
+def get_checkpoint_config(config):
+    ckpt_path = config.model.resume_from_checkpoint if config.model.base_config == "405b" else None
+    return CheckpointConfig(
+        load=ckpt_path,
+        save=None,
+        fully_parallel_load=config.model.dist_ckpt_parallel_load,
+        dist_ckpt_strictness="log_all",
+        load_optim=False,
+        load_rng=False,
+        load_main_params_from_ckpt=config.model.optim.fp8_param_gather,
+        ckpt_format=config.model.dist_ckpt_format,
+    )
+
+
+def get_rerun_state_machine_config(config):
+    return RerunStateMachineConfig(
+        rerun_mode="disabled",
+        check_for_nan_in_loss=False,
+        check_for_spiky_loss=False,
+    )
+
+
+def get_logger_config(config):
+    return LoggerConfig(log_interval=config.trainer.max_steps + 1)
+
+
+def get_rng_config(config):
+    return RNGConfig(seed=config.model.seed, te_rng_tracker=config.model.use_te_rng_tracker)
+
+
+def get_comm_overlap_config(config):
+    tp_comm_overlap = config.model.ub_tp_comm_overlap
+
+    tp_comm_overlap_cfg = None
+    if tp_comm_overlap:
+        from megatron.bridge.training.comm_overlap import (
             BulkOverlapCfg,
             PipelineOverlapCfg,
             RingExchangeOverlapCfg,
@@ -481,9 +405,9 @@ def get_overlap_callback(config):
         )
 
         buffer_options = config.model.ub_tp_comm_overlap_cfg
-        # keys are qkv_dgrad, qkv_wgrad, fc1_dgrad, fc1_wgrad, qkv_fprop, proj_dgrad, fc1_fprop, fc2_dgrad, proj_fprop, fc2_fprop
         userbuffer_args = {}
-        expected_args_list = [
+
+        for key in [
             "qkv_dgrad",
             "qkv_wgrad",
             "fc1_dgrad",
@@ -494,87 +418,113 @@ def get_overlap_callback(config):
             "fc2_dgrad",
             "proj_fprop",
             "fc2_fprop",
-        ]
-        assert all([x in buffer_options for x in expected_args_list]), (
-            f"{', '.join([x for x in buffer_options if x not in expected_args_list])} are not in expected values list"
-        )
-        for key in buffer_options.keys():
-            attributes = buffer_options[key]
-            fp8_buf = False
-            try:
-                fp8_buf = bool(attributes.fp8_buf)
-            except:
-                pass
-            if attributes.method == "pipeline":
-                userbuffer_args[key] = PipelineOverlapCfg(
-                    num_sm=attributes.num_sm,
-                    cga_size=attributes.cga_size,
-                    num_splits=attributes.num_splits,
-                    set_sm_margin=bool(attributes.set_sm_margin),
-                    fp8_buf=fp8_buf,
-                )
-            elif attributes.method == "bulk":
-                userbuffer_args[key] = BulkOverlapCfg(
-                    num_sm=attributes.num_sm,
-                    cga_size=attributes.cga_size,
-                    set_sm_margin=bool(attributes.set_sm_margin),
-                )
-            elif attributes.method == "ring_exchange":
-                userbuffer_args[key] = RingExchangeOverlapCfg(
-                    fp8_buf=fp8_buf,
-                )
-            else:
-                assert False, f"method {attributes.method} is not defined."
+        ]:
+            if key in buffer_options:
+                attributes = buffer_options[key]
+                fp8_buf = False
+                try:
+                    fp8_buf = bool(attributes.fp8_buf)
+                except:
+                    pass
+                if attributes.method == "pipeline":
+                    userbuffer_args[key] = PipelineOverlapCfg(
+                        num_sm=attributes.num_sm,
+                        cga_size=attributes.cga_size,
+                        num_splits=attributes.num_splits,
+                        set_sm_margin=bool(attributes.set_sm_margin),
+                        fp8_buf=fp8_buf,
+                    )
+                elif attributes.method == "bulk":
+                    userbuffer_args[key] = BulkOverlapCfg(
+                        num_sm=attributes.num_sm,
+                        cga_size=attributes.cga_size,
+                        set_sm_margin=bool(attributes.set_sm_margin),
+                    )
+                elif attributes.method == "ring_exchange":
+                    userbuffer_args[key] = RingExchangeOverlapCfg(
+                        fp8_buf=fp8_buf,
+                    )
+                else:
+                    assert False, f"method {attributes.method} is not defined."
 
-        userbuffer_config = TransformerLayerTPOverlapCfg(**userbuffer_args)
+        tp_comm_overlap_cfg = TransformerLayerTPOverlapCfg(**userbuffer_args)
 
-    from nemo.lightning.pytorch.callbacks.megatron_comm_overlap import (
-        MegatronCommOverlapCallback,
-    )
-
-    comm_overlap = MegatronCommOverlapCallback(
-        tp_comm_overlap=config.model.ub_tp_comm_overlap,
-        tp_comm_overlap_cfg=userbuffer_config,
+    return CommOverlapConfig(
+        tp_comm_overlap=tp_comm_overlap,
+        tp_comm_overlap_cfg=tp_comm_overlap_cfg,
+        # PP overlap
         overlap_p2p_comm=config.model.overlap_p2p_comm,
         batch_p2p_comm=config.model.batch_p2p_comm,
+        # DP overlap
         overlap_grad_reduce=config.model.optim.overlap_grad_reduce,
         overlap_param_gather=config.model.optim.overlap_param_gather,
         overlap_param_gather_with_optimizer_step=config.model.optim.overlap_param_gather_with_optim_step,
         align_param_gather=config.model.optim.align_param_gather,
+        bucket_size=config.model.optim.bucket_size,
+        # Pipeline bubble
         defer_embedding_wgrad_compute=config.model.defer_embedding_wgrad_compute,
         wgrad_deferral_limit=config.model.wgrad_deferral_limit,
-        bucket_size=config.model.optim.bucket_size,
-    )
-
-    return comm_overlap
-
-
-def get_autoresume(config):
-    return nl.AutoResume(
-        restore_config=nl.RestoreConfig(path=config.model.resume_from_checkpoint)
     )
 
 
-@rank_zero_only
+def get_profiling_config(config):
+    if config.misc.memory_profiler.enable:
+        return ProfilingConfig(
+            use_pytorch_profiler=True,
+            record_memory_history=True,
+            memory_snapshot_path=f"{config.misc.memory_profiler.file_prefix}.pickle",
+            profile_step_start=config.misc.memory_profiler.start_step,
+            profile_step_end=config.misc.memory_profiler.end_step,
+        )
+    return ProfilingConfig(
+        use_nsys_profiler=config.model.nsys_profile.enabled,
+        profile_step_start=config.model.nsys_profile.start_step,
+        profile_step_end=config.model.nsys_profile.end_step,
+        profile_ranks=[int(r) for r in str(config.model.nsys_profile.ranks).split(",")],
+        record_shapes=config.model.nsys_profile.gen_shape,
+        nvtx_ranges=config.model.nsys_profile.nvtx_ranges,
+    )
+
+
+def create_config(config):
+    return ConfigContainer(
+        checkpoint=get_checkpoint_config(config),
+        comm_overlap=get_comm_overlap_config(config),
+        dataset=get_data(config),
+        ddp=get_ddp_config(config),
+        dist=get_dist_config(config),
+        logger=get_logger_config(config),
+        mixed_precision=get_mixed_precision(config),
+        model=get_model(config),
+        optimizer=get_optimizer_config(config),
+        rng=get_rng_config(config),
+        profiling=get_profiling_config(config),
+        rerun_state_machine=get_rerun_state_machine_config(config),
+        scheduler=get_scheduler_config(config),
+        tokenizer=get_tokenizer_config(config),
+        train=get_train_config(config),
+        validation=get_validation_config(config),
+    )
+
+
 def log_hyperparams(config):
     if config.model.base_config == "405b":
         bmark = mllogger.constants.LLAMA31_405B
-        opt_lr_decay_steps = ceil(int(os.environ.get("OPT_LR_DECAY_STEPS", 0)) * 1152.0/config.model.global_batch_size) - int(config.model.optim.sched.warmup_steps)
+        opt_lr_decay_steps = ceil(
+            int(os.environ.get("OPT_LR_DECAY_STEPS", 0)) * 1152.0 / config.model.global_batch_size
+        ) - int(config.model.optim.sched.warmup_steps)
     else:
         bmark = mllogger.constants.LLAMA31_8B
         opt_lr_decay_steps = int(os.environ.get("OPT_LR_DECAY_STEPS", 0)) - int(config.model.optim.sched.warmup_steps)
     mllogger.mlperf_submission_log(bmark)
 
-    
     # Collects configs to be logged
     logging_configs = {
         # seeds
         mllogger.constants.SEED: config.model.seed,
         # HPs
         mllogger.constants.GLOBAL_BATCH_SIZE: config.model.global_batch_size,
-        mllogger.constants.GRADIENT_ACCUMULATION_STEPS: (
-            int(os.environ["MINIBS"]) / config.model.micro_batch_size
-        ),
+        mllogger.constants.GRADIENT_ACCUMULATION_STEPS: (int(os.environ["MINIBS"]) / config.model.micro_batch_size),
         mllogger.constants.MAX_SEQUENCE_LENGTH: config.model.encoder_seq_length,
         mllogger.constants.EVAL_SAMPLES: int(os.environ.get("VAL_SAMPLES", 0)),
         mllogger.constants.TRAIN_SAMPLES: 1574207408,
@@ -594,158 +544,48 @@ def log_hyperparams(config):
         mllogger.constants.MAX_STEPS: int(os.environ.get("MAX_STEPS", 0)),
         mllogger.constants.OPT_LR_DECAY_SCHEDULE: "cosine with linear warmup",
         # custom
-        "target_accuracy": config.model.custom.target_log_ppl
+        "target_accuracy": config.custom.target_log_ppl,
     }
 
     for key, value in logging_configs.items():
         mllogger.event(key=key, value=value)
 
 
-# ================ Training ================
-
-
-def set_breakpoint_rank0():
-    from nemo.utils.get_rank import is_global_rank_zero
-
-    if is_global_rank_zero():
-        import pdb
-
-        pdb.set_trace()
-
-
 @hydra.main(config_path="conf", config_name="llama31_config_custom", version_base="1.2")
 def main(cfg):
-    # Suppress warnings
-    warnings.filterwarnings("ignore")
-    torch.set_warn_always(False)
-
-    # Read MLPerf Configuration
     OmegaConf.resolve(cfg)
+    config_container = create_config(cfg)
+    if utils.rank == 0:
+        log_hyperparams(cfg)
+    callbacks = [
+        WarmupCallback(cfg, forward_step_func=forward_step),
+        DeltaTimingCallback(cfg),
+        MLPerfLoggingCallback(cfg),
+    ]
 
-    import logging as base_logging
+    # GC Config
+    config_container.train.manual_gc = True
+    config_container.train.manual_gc_interval = 500
+    config_container.train.manual_gc_eval = False
 
-    base_logging.getLogger("torch.distributed.distributed_c10d").setLevel(
-        logging.WARNING
-    )
-    base_logging.getLogger("DotProductAttention").setLevel(base_logging.WARNING)
+    # Memory management
+    config_container.train.empty_unused_memory_level = 0
+    config_container.train.train_sync_interval = None
 
-    if cfg.model.nsys_profile.enabled and os.getenv("PROFILE_RANKS", "") != "":
-        prof_ranks = [
-            int(rank) for rank in os.getenv("PROFILE_RANKS").replace(" ", "").split(",")
-        ]
-        cfg.model.nsys_profile.ranks = prof_ranks
+    # Skip numeric checks
+    config_container.train.check_optimizer_step_success = False
+    config_container.train.skip_sync_grad_norm_across_mp = True
+    
+    # Skip logging & timers
+    config_container.logger.skip_train_metrics_log = True
+    config_container.logger.timing_log_level = -1
 
-    logging.info("\n\n**************** Experiment configuration ****************")
-    logging.info(f"\n{OmegaConf.to_yaml(cfg)}")
+    config_container.train.exit_signal_handler = False
 
-    logging.info(
-        f"\nTP: {cfg.model.tensor_model_parallel_size}; PP: {cfg.model.pipeline_model_parallel_size}; VP: {cfg.model.virtual_pipeline_model_parallel_size}; CP: {cfg.model.context_parallel_size}"
-    )
-
-    # Components
-    logging.info("======== Benchmarked setups ========")
-
-    # Pre-training warmup components
-    warmup_data = mock_data(cfg, for_warmup=True)
-
-    # Actual training components
-    data = None
-    if cfg.model.data.mock_dataset:
-        data = mock_data(cfg, for_warmup=False)
-    else:
-        data = get_data(cfg)
-    model, precision = get_model_with_precision(cfg, data.tokenizer)
-    optimizer = get_optimizer(cfg)
-    strategy = get_strategy(cfg)
-    trainer = get_trainer(cfg, precision, strategy)
-    logger = None if cfg.model.custom.disable_nemo_logs else get_logger(cfg)
-    resume = None if cfg.model.resume_from_checkpoint is None else get_autoresume(cfg)
-
-    # Callbacks
-    trainer.callbacks.append(DeltaTimingCallback())
-    trainer.callbacks.append(get_overlap_callback(cfg))
-    trainer.callbacks.append(
-        GarbageCollectionCallback(
-            gc_interval_train=cfg.model.gc_interval_train,
-            gc_interval_val=cfg.model.gc_interval_valid,
-        )
-    )
-    if cfg.misc.print_config:
-        trainer.callbacks.append(PrintArtifacts(cfg.exp_manager.explicit_log_dir))
-
-    if cfg.model.nsys_profile.enabled:
-        trainer.callbacks.append(
-            NsysCallback(
-                start_step=cfg.model.nsys_profile.start_step,
-                end_step=cfg.model.nsys_profile.end_step,
-                ranks=cfg.model.nsys_profile.ranks,
-                gen_shape=cfg.model.nsys_profile.gen_shape,
-                nvtx_ranges=cfg.model.nsys_profile.nvtx_ranges
-            )
-        )
-
-    metrics_logger = MetricsLogger(
-        model,
-        cfg,
-        optimizer,
-    )
-
-    custom_callback = metrics_logger.callback
-    metrics_logger.set_trainer(trainer)
-
-    trainer.loggers.append(metrics_logger)
-    trainer.callbacks.append(custom_callback)
-
-    memory_profiler = None
-    if cfg.misc.memory_profiler.enable:
-        memory_profiler = MemoryProfileCallback(
-            file_prefix=cfg.misc.memory_profiler.file_prefix,
-            max_entries=cfg.misc.memory_profiler.max_entries,
-            rank_0_only=cfg.misc.memory_profiler.rank_0_only,
-            start_location=cfg.misc.memory_profiler.start_location,
-            end_location=cfg.misc.memory_profiler.end_location,
-            force_oom_before_stop=cfg.misc.memory_profiler.force_oom_before_stop,
-        )
-        trainer.callbacks.append(memory_profiler)
-
-    if fname := os.environ.get('STAT_CALLBACK_FNAME'):
-        from mlperf_common.callbacks import StatsLogCallback
-        trainer.callbacks.append(StatsLogCallback(save_path=fname))
-
-    setup_auxiliary_loggers()
-    log_hyperparams(cfg)
-
-    # Setup warmups
-    trainer.mock_dataset = warmup_data
-
-    logging.info(f"======== Benchmarked fit ========")
-
-    if cfg.misc.memory_profiler.enable and cfg.misc.memory_profiler.possible_oom:
-        try:
-            train(
-                model=model,
-                trainer=trainer,
-                optim=optimizer,
-                data=data,
-                tokenizer="data",
-                log=logger,
-                resume=resume,
-            )
-        except:
-            memory_profiler.cleanup_after_oom()
-    else:
-        train(
-            model=model,
-            trainer=trainer,
-            optim=optimizer,
-            data=data,
-            tokenizer="data",
-            log=logger,
-            resume=resume,
-        )
+    pretrain(config_container, forward_step_func=forward_step, callbacks=callbacks)
 
 
 if __name__ == "__main__":
-    if get_rank() == 0:
+    if utils.rank == 0:
         mllogger.start(key=mllogger.constants.INIT_START)
     main()
